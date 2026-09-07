@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "commonjs",
+    "lib": ["ES2021"],
+    "jsx": "react-native",
+    "noEmit": true,
+    "strict": false,
+    "moduleResolution": "node",
+    "allowJs": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["src/*"],
+      "@core/*": ["src/core/*"],
+      "@store/*": ["src/store/*"],
+      "@ui/*": ["src/ui/*"],
+      "@screens/*": ["src/screens/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@nav/*": ["src/navigation/*"]
+    }
+  },
+  "include": ["App.js", "src/**/*", "*.config.js"],
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js"]
+}

@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+dist_web/
+web-build/
+expo-env.d.ts
+
+# Native builds
+/ios
+/android
+
+# Metro / build cache
+.metro-health-check*
+bundle_check.js
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Test / coverage
+coverage/

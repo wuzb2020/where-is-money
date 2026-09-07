@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "随手记 Lite",
+    "slug": "qianqunale-accounting",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#6366F1"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.qianqunale.accounting",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "需要访问相册来识别记账图片",
+        "NSCameraUsageDescription": "需要使用相机拍照来识别账单",
+        "NSPhotoLibraryAddUsageDescription": "需要保存导出的账单文件"
+      }
+    },
+    "android": {
+      "package": "com.qianqunale.accounting",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ]
+    },
+    "web": {},
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "需要访问相册来识别记账图片",
+          "cameraPermission": "需要使用相机拍照来识别账单"
+        }
+      ]
+    ]
+  }
+}
