@@ -1,0 +1,79 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding: 0 $page-padding 200rpx;
+}
+
+.chips {
+  display: flex;
+  padding: $spacing-md 0;
+  gap: $spacing-sm;
+}
+
+.chip {
+  padding: 12rpx 40rpx;
+  border-radius: $radius-round;
+  background: $color-bg-card;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  border: 1rpx solid $color-border;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.chipActive {
+  background: $color-primary;
+  border-color: $color-primary;
+  color: $color-text-white;
+  font-weight: $font-weight-medium;
+}
+
+.dayGroup {
+  margin-bottom: $spacing-md;
+}
+
+.dayHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-sm $spacing-xs;
+}
+
+.dayTitle {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-secondary;
+}
+
+.dayTotal {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.dayItem {
+  margin-bottom: $spacing-sm;
+}
+
+.fab {
+  position: fixed;
+  right: $page-padding;
+  bottom: 140rpx;
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: $radius-round;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  font-size: 56rpx;
+  @include flex-center;
+  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.45);
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.94);
+  }
+}

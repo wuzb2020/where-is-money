@@ -1,0 +1,154 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding-bottom: 200rpx;
+}
+
+.header {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  padding: $spacing-lg $page-padding $spacing-xl * 2;
+  color: $color-text-white;
+}
+
+.greetingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.greeting {
+  font-size: $font-size-md;
+  opacity: 0.9;
+}
+
+.avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: $radius-round;
+  background: rgba(255, 255, 255, 0.25);
+  @include flex-center;
+  overflow: hidden;
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.avatarText {
+  font-size: 36rpx;
+}
+
+.avatarImg {
+  width: 72rpx;
+  height: 72rpx;
+}
+
+.syncBadge {
+  display: flex;
+  align-items: center;
+  margin-top: $spacing-sm;
+  font-size: $font-size-xs;
+  opacity: 0.85;
+}
+
+.syncDot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: $radius-round;
+  background: #6ee7b7;
+  margin-right: 8rpx;
+}
+
+.syncDotPending {
+  background: #fcd34d;
+}
+
+.monthLabel {
+  margin-top: $spacing-lg;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+}
+
+.summary {
+  display: flex;
+  margin-top: $spacing-md;
+}
+
+.summaryItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.summaryLabel {
+  font-size: $font-size-sm;
+  opacity: 0.85;
+}
+
+.summaryValue {
+  margin-top: 8rpx;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  white-space: nowrap;
+}
+
+.body {
+  padding: 0 $page-padding;
+  margin-top: -$spacing-xl;
+}
+
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.cardTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.cardMore {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.recentItem {
+  margin-bottom: $spacing-sm;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.fab {
+  position: fixed;
+  left: $page-padding;
+  right: $page-padding;
+  bottom: 140rpx;
+  height: $button-height-lg;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  @include flex-center;
+  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.4);
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.92;
+    transform: scale(0.98);
+  }
+}

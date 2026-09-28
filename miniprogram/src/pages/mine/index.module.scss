@@ -1,0 +1,157 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding: $spacing-md $page-padding $spacing-xl;
+}
+
+.userCard {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  display: flex;
+  align-items: center;
+  box-shadow: $shadow-card;
+}
+
+.avatarBtn {
+  @include button-reset;
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: $radius-round;
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.avatarImg {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: $radius-round;
+}
+
+.avatarPlaceholder {
+  font-size: 56rpx;
+  line-height: 112rpx;
+  text-align: center;
+}
+
+.userInfo {
+  margin-left: $spacing-md;
+  flex: 1;
+  min-width: 0;
+}
+
+.nickname {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  color: $color-text-white;
+}
+
+.nicknameInput {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  color: $color-text-white;
+  height: 56rpx;
+}
+
+.userTip {
+  margin-top: 8rpx;
+  font-size: $font-size-sm;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  margin-top: $spacing-md;
+  overflow: hidden;
+}
+
+.syncRow {
+  display: flex;
+  align-items: center;
+  padding: $spacing-lg;
+}
+
+.syncIcon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: $radius-round;
+  background: $color-bg-primary-soft;
+  @include flex-center;
+  font-size: 40rpx;
+  flex-shrink: 0;
+}
+
+.syncInfo {
+  flex: 1;
+  margin-left: $spacing-md;
+  min-width: 0;
+}
+
+.syncTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.syncDesc {
+  margin-top: 6rpx;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  @include text-ellipsis;
+}
+
+.syncBtn {
+  @include button-reset;
+  height: $button-height-sm;
+  padding: 0 32rpx;
+  border-radius: $radius-button;
+  background: $color-primary;
+  color: $color-text-white;
+  font-size: $font-size-sm;
+  margin-left: $spacing-sm;
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  padding: $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.menuIcon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: $radius-md;
+  background: $color-bg-primary-soft;
+  @include flex-center;
+  font-size: 32rpx;
+  flex-shrink: 0;
+}
+
+.menuLabel {
+  flex: 1;
+  margin-left: $spacing-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.menuArrow {
+  font-size: $font-size-md;
+  color: $color-text-disabled;
+}

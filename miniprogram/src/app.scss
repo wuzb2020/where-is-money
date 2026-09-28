@@ -1,0 +1,13 @@
+/* 全局基础样式 */
+page {
+  background-color: #f5f6fa;
+  color: #1d2129;
+  font-size: 28rpx;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+view,
+text {
+  box-sizing: border-box;
+}

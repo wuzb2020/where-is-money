@@ -1,0 +1,32 @@
+@use '@/styles/variables.scss' as *;
+
+.keyboard {
+  display: flex;
+  flex-wrap: wrap;
+  padding: $spacing-sm;
+  background: $color-bg-card;
+  border-top: 1rpx solid $color-divider;
+}
+
+.key {
+  width: 33.33%;
+  height: 96rpx;
+  @include flex-center;
+
+  &:active {
+    background: $color-bg-hover;
+    border-radius: $radius-sm;
+  }
+}
+
+.keyText {
+  font-size: 44rpx;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.keyBack {
+  .keyText {
+    font-size: 40rpx;
+  }
+}

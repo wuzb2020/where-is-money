@@ -119,7 +119,7 @@ export async function parseWord(fileUri) {
     }
   }
   for (const r of imageResults) {
-    for (const p of r.parsed) previewRows.push(p);
+    for (const entry of r.parsed) previewRows.push(entry.toPlain());
   }
 
   return { previewRows, totalTextRows: paragraphs.length, totalImages: images?.length || 0 };

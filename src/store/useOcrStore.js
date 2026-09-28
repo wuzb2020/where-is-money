@@ -34,11 +34,12 @@ export const useOcrStore = create((set, get) => ({
       set({ images: [...imgs] });
       try {
         const { rawText, parsed, fromCache } = await recognizeAndParse(imgs[i].uri);
-        // 如果解析结果没有分类 → 兜底用该类型第一个分类
-        const patchedParsed = await Promise.all(parsed.map(async (p) => {
-          if (p.categoryId) return p;
-          const cats = await CategoryDao.listByType(p.type);
-          return { ...p, categoryId: cats[0]?.id || 1 };
+        // parsed 是 TransactionEntry[]，转纯对象存入 zustand（保证可序列化）
+        // 同时兜底分类：未命中时取该类型第一个分类（category_id NOT NULL）
+        const patchedParsed = await Promise.all(parsed.map(async (entry) => {
+          if (entry.categoryId) return entry.toPlain();
+          const cats = await CategoryDao.listByType(entry.type);
+          return entry.patch({ categoryId: cats[0]?.id || 1 }).toPlain();
         }));
         imgs[i] = { ...imgs[i], status: 'done', rawText, parsed: patchedParsed, fromCache: !!fromCache };
       } catch (e) {
@@ -60,10 +61,10 @@ export const useOcrStore = create((set, get) => ({
     set({ images: [...imgs] });
     try {
       const { rawText, parsed, fromCache } = await recognizeAndParse(imgs[index].uri);
-      const patchedParsed = await Promise.all(parsed.map(async (p) => {
-        if (p.categoryId) return p;
-        const cats = await CategoryDao.listByType(p.type);
-        return { ...p, categoryId: cats[0]?.id || 1 };
+      const patchedParsed = await Promise.all(parsed.map(async (entry) => {
+        if (entry.categoryId) return entry.toPlain();
+        const cats = await CategoryDao.listByType(entry.type);
+        return entry.patch({ categoryId: cats[0]?.id || 1 }).toPlain();
       }));
       const next = [...get().images];
       next[index] = { ...next[index], status: 'done', rawText, parsed: patchedParsed, fromCache: !!fromCache, errorMsg: '' };

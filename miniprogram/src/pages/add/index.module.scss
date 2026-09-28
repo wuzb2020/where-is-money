@@ -1,0 +1,156 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: $spacing-lg;
+}
+
+.segmented {
+  display: flex;
+  padding: $spacing-md $page-padding 0;
+}
+
+.segItem {
+  flex: 1;
+  height: $button-height-md;
+  @include flex-center;
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  background: $color-bg-card;
+  transition: all $transition-base;
+
+  &:first-child {
+    border-radius: $radius-button 0 0 $radius-button;
+  }
+  &:last-child {
+    border-radius: 0 $radius-button $radius-button 0;
+  }
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.segExpenseActive {
+  background: $color-expense;
+  color: $color-text-white;
+  font-weight: $font-weight-semibold;
+}
+
+.segIncomeActive {
+  background: $color-income;
+  color: $color-text-white;
+  font-weight: $font-weight-semibold;
+}
+
+.amountCard {
+  margin: $spacing-md $page-padding 0;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  padding: $spacing-lg;
+  display: flex;
+  align-items: baseline;
+}
+
+.currency {
+  font-size: 48rpx;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.amountText {
+  margin-left: $spacing-sm;
+  font-size: 64rpx;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  line-height: 1.2;
+  word-break: break-all;
+}
+
+.card {
+  margin: $spacing-md $page-padding 0;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+}
+
+.cardHeader {
+  padding: $spacing-md $spacing-lg 0;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.formRow {
+  display: flex;
+  align-items: center;
+  padding: $spacing-md $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.formLabel {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  width: 120rpx;
+  flex-shrink: 0;
+}
+
+.formValue {
+  flex: 1;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.remarkInput {
+  flex: 1;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.quickChips {
+  display: flex;
+  gap: $spacing-xs;
+  margin-left: $spacing-sm;
+}
+
+.quickChip {
+  padding: 8rpx 20rpx;
+  border-radius: $radius-round;
+  background: $color-bg-hover;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+.saveBtn {
+  @include button-reset;
+  margin: $spacing-lg $page-padding 0;
+  width: calc(100% - 64rpx);
+  height: $button-height-lg;
+  border-radius: $radius-button;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.keyboardWrap {
+  margin: $spacing-md $page-padding 0;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  box-shadow: $shadow-card;
+}

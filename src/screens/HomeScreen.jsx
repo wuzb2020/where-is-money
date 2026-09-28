@@ -176,7 +176,9 @@ export default function HomeScreen({ navigation }) {
   };
 
   const btnImage = async () => {
-    await Haptic.impactMedium();
+    // web 端不 await 触觉反馈，避免脱离用户点击的同步上下文导致文件选择器被浏览器拦截
+    if (Platform.OS !== 'web') await Haptic.impactMedium();
+    else Haptic.impactMedium();
     // 【修改】web 端 Alert 不渲染自定义按钮、Promise 永不 resolve 会卡死；web 无相机，直接走相册
     let choice;
     if (Platform.OS === 'ios') {
@@ -205,7 +207,8 @@ export default function HomeScreen({ navigation }) {
           presentationStyle: 0,
         });
       } else {
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+        // web 端无需请求权限，且必须在用户点击的同步上下文内触发文件选择器
+        if (Platform.OS !== 'web') await ImagePicker.requestMediaLibraryPermissionsAsync();
         result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsMultipleSelection: true,
@@ -347,7 +350,7 @@ export default function HomeScreen({ navigation }) {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 220 }}
+        contentContainerStyle={{ paddingBottom: 150 }}
         refreshControl={
           <RefreshControl
             refreshing={loading}
@@ -439,9 +442,12 @@ export default function HomeScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* 底部三大按钮（悬浮在最底下） */}
-      <View pointerEvents="box-none" style={[styles.bottomBtnsWrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <View style={[styles.bottomBtns, { backgroundColor: theme.bgCard }]}>
+      {/* 底部三大按钮（悬浮停靠栏：卡片延伸至屏幕底边，内容避开 Home 指示条） */}
+      <View pointerEvents="box-none" style={styles.bottomBtnsWrap}>
+        <View style={[
+          styles.bottomBtns,
+          { backgroundColor: theme.bgCard, paddingBottom: Math.max(insets.bottom, 10) },
+        ]}>
           <BottomBigBtn
             icon="image-outline"
             label="拍照 / 相册"
@@ -604,7 +610,8 @@ const useStyles = makeStyles((theme) => ({
   },
   bottomBtns: {
     flexDirection: 'row',
-    paddingTop: 12,
+    paddingTop: 10,
+    paddingBottom: 10, // 内联会按安全区 insets.bottom 覆盖
     paddingHorizontal: 8,
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
