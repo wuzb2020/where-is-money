@@ -15,6 +15,10 @@ import { sanitizeAmountInput, formatAmountPlain, yuanToFen } from '../../core/ut
  * onAdd: () => void  // "+" 按钮：保存并追加下一条
  * onConfirm: () => void
  * showAdd?: boolean
+ * confirmDisabled?: boolean   // ✓ 键置灰（金额未输/分类未选时）
+ * middle?: ReactNode          // 插槽：渲染在快捷金额与键盘之间（pill 行等），
+ *                             // 配合 containerStyle={{flex:1}} 时键盘贴底
+ * containerStyle?: style
  */
 export default function AmountInput({
   valueFen = 0,
@@ -22,6 +26,9 @@ export default function AmountInput({
   onAdd,
   onConfirm,
   showAdd = false,
+  confirmDisabled = false,
+  middle,
+  containerStyle,
 }) {
   const { theme } = useAppTheme();
   const styles = useStyles();
@@ -77,7 +84,7 @@ export default function AmountInput({
   const isPlaceholder = yuanStr === '';
 
   return (
-    <View style={styles.container}>
+    <View style={cx(styles.container, containerStyle)}>
       {/* 金额大显示 */}
       <View style={styles.display}>
         <Text style={cx(styles.currency, isPlaceholder && { color: theme.text300 })}>¥</Text>
@@ -107,7 +114,10 @@ export default function AmountInput({
         ))}
       </View>
 
-      {/* 数字键盘（4x4 grid） */}
+      {/* 中部插槽：pill 行 / 提示等（配合 flex 布局把键盘压到底部） */}
+      {middle}
+
+      {/* 数字键盘（4x4 grid）；marginTop:auto 在非 flex 父容器下解析为 0，无副作用 */}
       <View style={styles.keypad}>
         {KEYPAD_KEYS.map((row, r) => (
           <View key={r} style={styles.keyrow}>
@@ -134,8 +144,11 @@ export default function AmountInput({
                   break;
                 case 'confirm':
                   content = (
-                    <View style={cx(styles.confirmBtn, { backgroundColor: theme.primary })}>
+                    <View style={cx(styles.confirmBtn, {
+                      backgroundColor: confirmDisabled ? theme.text300 : theme.primary,
+                    })}>
                       <Text style={styles.confirmText}>✓</Text>
+                      <Text style={styles.confirmSubText}>保存</Text>
                     </View>
                   );
                   keyStyle = styles.confirmKey;
@@ -148,7 +161,7 @@ export default function AmountInput({
                   activeOpacity={0.6}
                   style={cx(styles.key, keyStyle)}
                   onPress={() => {
-                    if (k.type === 'confirm') onConfirm?.();
+                    if (k.type === 'confirm') { if (!confirmDisabled) onConfirm?.(); }
                     else if (k.type === 'add') onAdd?.();
                     else press(k.label, k.type);
                   }}
@@ -178,20 +191,20 @@ const useStyles = makeStyles((theme) => ({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingVertical: 20,
+    paddingVertical: 10,
   },
-  currency: { fontSize: 32, color: theme.text900, fontWeight: '700', marginRight: 6, marginBottom: 4 },
-  amountInt: { fontSize: 56, color: theme.text900, fontWeight: '800', letterSpacing: 0.5 },
-  amountDec: { fontSize: 32, color: theme.text500, fontWeight: '700', marginBottom: 4 },
+  currency: { fontSize: 28, color: theme.text900, fontWeight: '700', marginRight: 6, marginBottom: 4 },
+  amountInt: { fontSize: 48, color: theme.text900, fontWeight: '800', letterSpacing: 0.5 },
+  amountDec: { fontSize: 28, color: theme.text500, fontWeight: '700', marginBottom: 4 },
   quickBar: {
     flexDirection: 'row', justifyContent: 'space-around',
-    paddingHorizontal: 12, marginBottom: 20, gap: 8,
+    paddingHorizontal: 12, marginBottom: 10, gap: 8,
   },
-  keypad: { paddingHorizontal: 12 },
+  keypad: { paddingHorizontal: 12, marginTop: 'auto' },
   keyrow: { flexDirection: 'row', justifyContent: 'space-around' },
   key: {
     flex: 1,
-    height: 58,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
     margin: 4,
@@ -202,8 +215,8 @@ const useStyles = makeStyles((theme) => ({
       android: { elevation: 1 },
     }),
   },
-  keyText: { fontSize: 24, color: theme.text900, fontWeight: '600' },
-  keyIconText: { fontSize: 20, color: theme.text700, fontWeight: '600' },
+  keyText: { fontSize: 22, color: theme.text900, fontWeight: '600' },
+  keyIconText: { fontSize: 18, color: theme.text700, fontWeight: '600' },
   confirmKey: {
     padding: 0,
     backgroundColor: 'transparent',
@@ -216,5 +229,6 @@ const useStyles = makeStyles((theme) => ({
     shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10,
     elevation: 4,
   },
-  confirmText: { color: '#fff', fontSize: 28, fontWeight: '800' },
+  confirmText: { color: '#fff', fontSize: 20, fontWeight: '800', lineHeight: 24 },
+  confirmSubText: { color: '#fff', fontSize: 10, fontWeight: '600', lineHeight: 12 },
 }));

@@ -1,37 +1,35 @@
 import React from 'react';
 import {
   View, Text, TouchableOpacity, KeyboardAvoidingView,
-  Platform, ScrollView, Modal, Alert, Image,
+  Platform, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppTheme, makeStyles, cx } from '../ui/themeHelper';
-import Button from '../ui/primitives/Button';
 import Input from '../ui/primitives/Input';
 import SegmentedControl from '../ui/primitives/SegmentedControl';
 import AmountInput from '../ui/primitives/AmountInput';
+import PressableScale from '../ui/primitives/PressableScale';
+import BottomSheet from '../ui/primitives/BottomSheet';
 import CategoryPickerSheet from '../ui/components/CategoryPickerSheet';
+import CategoryQuickGrid from '../ui/components/CategoryQuickGrid';
 import DatePickerSheet from '../ui/components/DatePickerSheet';
 import ConfirmDialog from '../ui/primitives/ConfirmDialog';
+import Button from '../ui/primitives/Button';
 import { useCategoryStore } from '../store/useCategoryStore';
 import { useTransactionStore } from '../store/useTransactionStore';
 import { useThemeStore } from '../store/useThemeStore';
 import Toast from '../ui/primitives/Toast';
 import * as Haptic from '../core/utils/haptics';
-import { dayjs } from '../core/utils/date';
-import { formatDate, dayStart } from '../core/utils/date';
-import { yuanToFen } from '../core/utils/amount';
+import { dayjs, dayStart } from '../core/utils/date';
 
 /**
- * 手动记账表单（全屏 Modal）
+ * 手动记账表单（全屏 Modal）—— 固定三层单屏布局，零滚动
  * - 顶部：X 关闭 + 收支切换
- * - 大号金额显示 + 快捷金额 + 自定义数字键盘
- * - 分类（默认上次用的）
- * - 日期（默认现在）
- * - 描述（可选）
- * - 附加图片（最多3张）
- * - 底部大按钮：保存
+ * - 常用分类宫格：最近使用 + 高频分类，一击直达；末位「更多」打开全量选择器
+ * - 中部：金额显示 + 快捷金额 + pill 行（日期/备注/图片，点击各弹 Sheet）
+ * - 底部：数字键盘固定（✓ = 保存，+ = 保存并继续），金额/分类未就绪时 ✓ 置灰
  */
 export default function ManualEntryScreen({ navigation, route }) {
   const { theme, insets } = useAppTheme();
@@ -57,12 +55,15 @@ export default function ManualEntryScreen({ navigation, route }) {
   const [images, setImages] = React.useState(initial.imagePaths || []);
   const [loading, setLoading] = React.useState(false);
 
-  // 选择分类 Sheet
+  // 分类全量选择 Sheet
   const [pickerVisible, setPickerVisible] = React.useState(false);
-  const [pickerMode, setPickerMode] = React.useState('category'); // category / date
 
-  // 日期选择滚轮 Sheet
+  // 日期滚轮 Sheet
   const [datePickerVisible, setDatePickerVisible] = React.useState(false);
+
+  // 备注 Sheet / 附加图片 Sheet
+  const [noteVisible, setNoteVisible] = React.useState(false);
+  const [imageSheetVisible, setImageSheetVisible] = React.useState(false);
 
   // 关闭拦截确认框
   const [discardVisible, setDiscardVisible] = React.useState(false);
@@ -153,7 +154,7 @@ export default function ManualEntryScreen({ navigation, route }) {
     }
   };
 
-  // "追加"模式：保存本条不清空，继续下一条
+  // "+" 键：追加模式，保存本条不清空，继续下一条
   const doAddNext = async () => {
     if (!canSave) return;
     // 【修改】编辑模式下没有"追加"语义，直接忽略，避免误新建重复记录
@@ -177,7 +178,7 @@ export default function ManualEntryScreen({ navigation, route }) {
     }
   };
 
-  // 选图
+  // 选图（附加图片 Sheet 内触发）
   const pickImages = async () => {
     const remain = 3 - images.length;
     if (remain <= 0) {
@@ -208,6 +209,43 @@ export default function ManualEntryScreen({ navigation, route }) {
   };
 
   // ============== RENDER ==============
+  // pill 行（日期 / 备注 / 图片）—— 收在金额与键盘之间，点击各弹对应 Sheet
+  const middleSlot = (
+    <View style={styles.middleWrap}>
+      <View style={styles.pillRow}>
+        <PressableScale style={styles.pill} onPress={() => setDatePickerVisible(true)}>
+          <MaterialCommunityIcons name="calendar-outline" size={16} color={theme.primary} />
+          <Text style={cx(styles.pillText, { color: theme.text700 })}>{datePillLabel(dateTs)}</Text>
+        </PressableScale>
+        <PressableScale style={styles.pill} onPress={() => setNoteVisible(true)}>
+          <MaterialCommunityIcons name="text-long" size={16} color={desc.trim() ? theme.primary : theme.text500} />
+          <Text
+            numberOfLines={1}
+            style={cx(styles.pillText, { color: desc.trim() ? theme.text900 : theme.text500 }, desc.trim() && { fontWeight: '700' })}
+          >
+            {desc.trim() ? truncate(desc.trim(), 8) : '备注'}
+          </Text>
+        </PressableScale>
+        <PressableScale style={styles.pill} onPress={() => setImageSheetVisible(true)}>
+          <MaterialCommunityIcons
+            name={images.length ? 'image-multiple-outline' : 'image-plus'}
+            size={16}
+            color={images.length ? theme.primary : theme.text500}
+          />
+          <Text style={cx(styles.pillText, { color: images.length ? theme.text900 : theme.text500 }, images.length > 0 && { fontWeight: '700' })}>
+            {images.length ? `图片 ${images.length}/3` : '图片'}
+          </Text>
+        </PressableScale>
+      </View>
+      {/* 未就绪提示：金额/分类缺一不可 */}
+      {!canSave ? (
+        <Text style={cx(styles.saveHint, { color: theme.text500 })}>
+          {amountFen <= 0 ? '先输入金额' : '请选择一个分类'}
+        </Text>
+      ) : null}
+    </View>
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bgPage }} edges={['top']}>
       <KeyboardAvoidingView
@@ -225,8 +263,8 @@ export default function ManualEntryScreen({ navigation, route }) {
           <View style={{ width: 40 }} />
         </View>
 
-        {/* 收入/支出 切换（在 header 下） */}
-        <View style={{ paddingHorizontal: 24, paddingVertical: 12 }}>
+        {/* 收入/支出 切换 */}
+        <View style={{ paddingHorizontal: 24, paddingVertical: 10 }}>
           <SegmentedControl
             variant="income-expense"
             options={[
@@ -238,138 +276,79 @@ export default function ManualEntryScreen({ navigation, route }) {
           />
         </View>
 
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 40 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* 大金额数字键盘 */}
-          <AmountInput
-            valueFen={amountFen}
-            onChangeFen={(fen) => setAmountFen(fen)}
-            onAdd={doAddNext}
-            onConfirm={() => doSave(true)}
-            showAdd
+        {/* 常用分类宫格：一击直达，末位「更多」进全量选择器 */}
+        <CategoryQuickGrid
+          type={type}
+          selectedId={categoryId}
+          onSelect={(cat) => setCategoryId(cat.id)}
+          onMore={() => setPickerVisible(true)}
+        />
+
+        {/* 金额 + 快捷金额 + pill 行 + 键盘（flex:1 撑满，键盘贴底） */}
+        <AmountInput
+          valueFen={amountFen}
+          onChangeFen={(fen) => setAmountFen(fen)}
+          onAdd={doAddNext}
+          onConfirm={() => doSave(true)}
+          showAdd
+          confirmDisabled={!canSave || loading}
+          middle={middleSlot}
+          containerStyle={{ flex: 1 }}
+        />
+      </KeyboardAvoidingView>
+
+      {/* 备注 Sheet（替代内嵌输入框：避免系统键盘与数字键盘冲突、多行输入撑高页面） */}
+      <BottomSheet visible={noteVisible} onClose={() => setNoteVisible(false)} title="备注">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Input
+            placeholder="例如：淘宝买 iQOO 5e 手机 8+256G 蓝色"
+            value={desc}
+            onChangeText={setDesc}
+            multiline
+            autoFocus
+            maxLength={200}
+            containerStyle={{ marginVertical: 4 }}
           />
-
-          {/* 分类 + 日期 + 描述 */}
-          <View style={{ paddingHorizontal: 24, marginTop: 20, gap: 10 }}>
-            {/* 分类行 */}
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[styles.fieldRow, { backgroundColor: theme.bgCard }]}
-              onPress={() => setPickerVisible(true)}
-            >
-              <View style={styles.fieldIcon}><MaterialCommunityIcons name="tag-multiple-outline" size={18} color={theme.primary} /></View>
-              <Text style={[styles.fieldLabel, { color: theme.text500 }]}>分类</Text>
-              <View style={{ flex: 1, alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'flex-end' }}>
-                <View style={[styles.chipInline, { backgroundColor: (selectedCat?.color || theme.primary) + '22' }]}>
-                  <MaterialCommunityIcons name={selectedCat?.icon || 'circle'} size={14} color={selectedCat?.color || theme.primary} />
-                  <Text style={[styles.chipInlineText, { color: selectedCat?.color || theme.primary }]}>
-                    {selectedCat?.name || '请选择'}
-                  </Text>
-                </View>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={18} color={theme.text500} />
-            </TouchableOpacity>
-
-            {/* 日期行 */}
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[styles.fieldRow, { backgroundColor: theme.bgCard }]}
-              onPress={() => setDatePickerVisible(true)}
-            >
-              <View style={styles.fieldIcon}><MaterialCommunityIcons name="calendar-outline" size={18} color={theme.primary} /></View>
-              <Text style={[styles.fieldLabel, { color: theme.text500 }]}>日期</Text>
-              <Text style={[styles.fieldValueRight, { color: theme.text900, flex: 1, textAlign: 'right' }]}>
-                {formatDate(dateTs)}
-              </Text>
-              <MaterialCommunityIcons name="chevron-right" size={18} color={theme.text500} />
-            </TouchableOpacity>
-
-            {/* 描述行 */}
-            <View style={[styles.fieldRow, { paddingVertical: 10, backgroundColor: theme.bgCard, alignItems: 'flex-start' }]}>
-              <View style={[styles.fieldIcon, { marginTop: 4 }]}><MaterialCommunityIcons name="text-long" size={18} color={theme.primary} /></View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={[styles.fieldLabel, { color: theme.text500, marginBottom: 4 }]}>描述</Text>
-                <Input
-                  placeholder={type === 'expense' ? '例如：淘宝买 iQOO 5e 手机 8+256G 蓝色' : '例如：8月绩效奖金'}
-                  value={desc}
-                  onChangeText={setDesc}
-                  multiline
-                  containerStyle={{ marginVertical: 0 }}
-                />
-              </View>
-            </View>
-
-            {/* 附加图片 */}
-            <View style={[styles.fieldRow, { backgroundColor: theme.bgCard, alignItems: 'flex-start' }]}>
-              <View style={[styles.fieldIcon, { marginTop: 4 }]}>
-                <MaterialCommunityIcons name="image-plus-outline" size={18} color={theme.primary} />
-              </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={[styles.fieldLabel, { color: theme.text500, marginBottom: 8 }]}>
-                  附加图片（可选，最多 3 张）
-                </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {images.map((u, i) => (
-                    <View key={i} style={{ position: 'relative' }}>
-                      <View style={{ width: 72, height: 72, borderRadius: 10, overflow: 'hidden', backgroundColor: theme.divider }}>
-                        <Image source={{ uri: u }} style={{ width: '100%', height: '100%' }} />
-                      </View>
-                      <TouchableOpacity
-                        activeOpacity={0.7}
-                        hitSlop={8}
-                        onPress={() => setImages(images.filter((_, idx) => idx !== i))}
-                        style={[styles.imgDel, { backgroundColor: theme.danger }]}
-                      >
-                        <MaterialCommunityIcons name="close" size={12} color="#fff" />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                  {images.length < 3 ? (
-                    <TouchableOpacity activeOpacity={0.6} onPress={pickImages}
-                      style={[styles.imgAdd, { borderColor: theme.primary, backgroundColor: theme.primaryBg }]}
-                    >
-                      <MaterialCommunityIcons name="plus" size={22} color={theme.primary} />
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-
-        {/* 底部大按钮 */}
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 12, backgroundColor: theme.bgCard, borderTopColor: theme.divider }]}>
-          {!canSave && !loading ? (
-            <Text style={[styles.saveHint, { color: theme.text500 }]}>
-              {amountFen <= 0 ? '先输入金额' : '请选择一个分类'}
-            </Text>
-          ) : null}
           <Button
             size="full"
             variant="primary"
-            disabled={!canSave || loading}
-            loading={loading}
-            onPress={() => doSave(true)}
+            style={{ marginTop: 8 }}
+            onPress={() => setNoteVisible(false)}
           >
-            {loading ? '保存中…' : `保存 ${canSave ? formatAmountShort(amountFen) : ''}`}
+            完成
           </Button>
-          <Button
-            size="full"
-            variant="ghost"
-            style={{ marginTop: 6 }}
-            disabled={!canSave || loading}
-            onPress={doAddNext}
-          >
-            ➕ 保存并继续添加
-          </Button>
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </BottomSheet>
 
-      {/* 分类选择 Sheet */}
+      {/* 附加图片 Sheet */}
+      <BottomSheet visible={imageSheetVisible} onClose={() => setImageSheetVisible(false)} title="附加图片（最多 3 张）">
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 8 }}>
+          {images.map((u, i) => (
+            <View key={i} style={{ position: 'relative' }}>
+              <View style={{ width: 88, height: 88, borderRadius: 12, overflow: 'hidden', backgroundColor: theme.divider }}>
+                <Image source={{ uri: u }} style={{ width: '100%', height: '100%' }} />
+              </View>
+              <PressableScale
+                hitSlop={8}
+                onPress={() => setImages(images.filter((_, idx) => idx !== i))}
+                style={[styles.imgDel, { backgroundColor: theme.danger }]}
+              >
+                <MaterialCommunityIcons name="close" size={12} color="#fff" />
+              </PressableScale>
+            </View>
+          ))}
+          {images.length < 3 ? (
+            <PressableScale
+              onPress={pickImages}
+              style={[styles.imgAdd, { borderColor: theme.primary, backgroundColor: theme.primaryBg }]}
+            >
+              <MaterialCommunityIcons name="plus" size={26} color={theme.primary} />
+            </PressableScale>
+          ) : null}
+        </View>
+      </BottomSheet>
+
+      {/* 分类全量选择 Sheet */}
       <CategoryPickerSheet
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
@@ -408,11 +387,18 @@ export default function ManualEntryScreen({ navigation, route }) {
   );
 }
 
-function formatAmountShort(fen) {
-  const y = fen / 100;
-  if (y >= 10000) return `¥${(y/10000).toFixed(1)}w`;
-  if (y >= 1000) return `¥${y.toFixed(0)}`;
-  return `¥${y.toFixed(2)}`;
+// pill 行日期标签：今天 / 昨天 / MM-DD / YYYY-MM-DD
+function datePillLabel(ts) {
+  const d = dayjs(ts);
+  const today = dayjs().startOf('day');
+  if (d.isSame(today, 'day')) return '今天';
+  if (d.isSame(today.subtract(1, 'day'), 'day')) return '昨天';
+  if (d.year() === dayjs().year()) return d.format('MM-DD');
+  return d.format('YYYY-MM-DD');
+}
+
+function truncate(str, n) {
+  return str.length > n ? `${str.slice(0, n)}…` : str;
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -423,31 +409,30 @@ const useStyles = makeStyles((theme) => ({
   },
   closeBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title:    { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700' },
-  fieldRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    borderRadius: 14,
-    gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3,
-    elevation: 1,
+
+  // pill 行
+  middleWrap: { paddingHorizontal: 16 },
+  pillRow: { flexDirection: 'row', gap: 8 },
+  pill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: theme.bgCard,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+      android: { elevation: 1 },
+    }),
   },
-  fieldIcon: {
-    width: 34, height: 34, borderRadius: 10,
-    backgroundColor: theme.primaryBg,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  fieldLabel: { fontSize: 14, fontWeight: '600' },
-  fieldValueRight: { fontSize: 14, fontWeight: '600' },
-  chipInline: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: 10, gap: 4,
-  },
-  chipInlineText: { fontSize: 13, fontWeight: '700', marginLeft: 4 },
+  pillText: { fontSize: 13, fontWeight: '600', maxWidth: '78%' },
+  saveHint: { fontSize: 12, textAlign: 'center', marginTop: 8, marginBottom: 2 },
+
+  // 附加图片 Sheet
   imgAdd: {
-    width: 72, height: 72, borderRadius: 10,
+    width: 88, height: 88, borderRadius: 12,
     borderWidth: 1.5, borderStyle: 'dashed',
     alignItems: 'center', justifyContent: 'center',
   },
@@ -457,18 +442,4 @@ const useStyles = makeStyles((theme) => ({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: '#fff',
   },
-  footer: {
-    paddingHorizontal: 16, paddingTop: 12,
-    borderTopWidth: 0.5,
-  },
-  saveHint: { fontSize: 12, textAlign: 'center', marginBottom: 6 },
-  dateSheet: {
-    width: '100%',
-    borderTopLeftRadius: theme.radius.sheet,
-    borderTopRightRadius: theme.radius.sheet,
-    paddingTop: 8,
-  },
-  sheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginVertical: 6 },
-  dateSheetTitle: { textAlign: 'center', fontSize: 16, fontWeight: '700', marginBottom: 6 },
-  quickChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
 }));
