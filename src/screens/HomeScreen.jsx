@@ -22,10 +22,11 @@ import Toast from '../ui/primitives/Toast';
 import Skeleton from '../ui/primitives/Skeleton';
 import PressableScale from '../ui/primitives/PressableScale';
 import MonthlyReportCard from '../ui/components/MonthlyReportCard';
+import DatePickerSheet from '../ui/components/DatePickerSheet';
 import Button from '../ui/primitives/Button';
 import { getDashboardData, getMonthlyReport } from '../core/services/AnalyticsService';
 import { DATE_RANGE_PRESETS } from '../core/constants/categories';
-import { getPresetRange, dayjs } from '../core/utils/date';
+import { getPresetRange, getCustomRange, dayjs } from '../core/utils/date';
 import { formatAmount } from '../core/utils/amount';
 import * as Haptic from '../core/utils/haptics';
 
@@ -65,6 +66,10 @@ export default function HomeScreen({ navigation }) {
   const [showReport, setShowReport] = React.useState(false);
   const [monthlyReport, setMonthlyReport] = React.useState(null);
 
+  // 自定义时间范围弹层流程：null（关闭）→ 'start'（选开始日）→ 'end'（选结束日）
+  const [customPhase, setCustomPhase] = React.useState(null);
+  const [draftStart, setDraftStart] = React.useState(null);
+
   const txStore = useTransactionStore();
   const ocrStore = useOcrStore();
   const importStore = useImportStore();
@@ -93,6 +98,8 @@ export default function HomeScreen({ navigation }) {
   };
 
   React.useEffect(() => {
+    // custom 范围由选日期流程直接 setRange，不能用 getPresetRange（无 custom 分支会落到近30天）覆盖
+    if (preset === 'custom') return;
     const r = getPresetRange(preset);
     setRange({ start: r.start, end: r.end });
     setLabel(r.label);
@@ -388,7 +395,7 @@ export default function HomeScreen({ navigation }) {
               />
             ))}
             <Chip
-              label={label}
+              label={preset === 'custom' ? label : '自定义'}
               size="sm"
               icon={<MaterialCommunityIcons name="calendar-range" size={12} color={preset === 'custom' ? '#fff' : theme.primary} />}
               variant={preset === 'custom' ? 'primary' : 'outline'}
@@ -492,6 +499,22 @@ export default function HomeScreen({ navigation }) {
           ) : null}
         </View>
       </Modal>
+
+      {/* 自定义时间范围：开始日期 → 结束日期 两步滚轮选择 */}
+      <DatePickerSheet
+        visible={customPhase === 'start'}
+        title="选择开始日期"
+        value={range.start}
+        onClose={() => setCustomPhase(null)}
+        onConfirm={onCustomStartConfirm}
+      />
+      <DatePickerSheet
+        visible={customPhase === 'end'}
+        title="选择结束日期"
+        value={draftStart > dayjs().startOf('day').valueOf() ? draftStart : dayjs().startOf('day').valueOf()}
+        onClose={() => setCustomPhase(null)}
+        onConfirm={onCustomEndConfirm}
+      />
     </SafeAreaView>
   );
 
@@ -506,25 +529,28 @@ export default function HomeScreen({ navigation }) {
     return '夜深了';
   }
 
+  // 打开自定义范围：先选开始日期。已处于 custom 时沿用当前开始日，否则用当前范围开始日
   function openCustomDate() {
-    Alert.alert(
-      '自定义时间范围',
-      '请输入开始和结束日期（YYYY-MM-DD，用空格分开）',
-      [
-        { text: '取消', style: 'cancel' },
-        {
-          text: '使用最近90天',
-          onPress: () => {
-            const r = {
-              start: dayjs().subtract(89, 'day').startOf('day').valueOf(),
-              end: dayjs().add(1, 'day').startOf('day').valueOf(),
-              label: '最近90天',
-            };
-            setRange({ start: r.start, end: r.end }); setLabel(r.label); setPreset('custom');
-          },
-        },
-      ],
-    );
+    setDraftStart(range.start);
+    setCustomPhase('start');
+  }
+
+  // 开始日期确认 → 进入结束日期选择
+  function onCustomStartConfirm(ts) {
+    setDraftStart(ts);
+    setCustomPhase('end');
+  }
+
+  // 结束日期确认 → 组装范围并应用；起止颠倒时自动交换
+  function onCustomEndConfirm(ts) {
+    let s = draftStart;
+    let e = dayjs(ts).startOf('day').valueOf();
+    if (e < s) { const t = s; s = e; e = t; }
+    const r = getCustomRange(s, e);
+    setCustomPhase(null);
+    setRange({ start: r.start, end: r.end });
+    setLabel(r.label);
+    setPreset('custom');
   }
 }
 

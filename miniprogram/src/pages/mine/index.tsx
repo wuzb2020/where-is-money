@@ -52,7 +52,7 @@ function MinePage() {
     Taro.showToast({ title: '导出功能即将上线', icon: 'none' })
   const onAbout = () =>
     Taro.showModal({
-      title: '钱去哪儿了',
+      title: '钱去哪了',
       content: '离线优先记账本，数据先存本地、自动云同步。小程序版 v1.0.0',
       showCancel: false
     })

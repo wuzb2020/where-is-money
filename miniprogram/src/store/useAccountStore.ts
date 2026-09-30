@@ -114,7 +114,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
     const localLastSync = readStorage<number | null>(KEY_LAST_SYNC, null)
     set({ txns: localTxns, outbox: localOutbox, user: localUser, lastSyncAt: localLastSync })
 
-    // 2. 静默登录（微信端云函数取 openid；H5 走 mock）
+    // 2. 静默登录（微信端云函数取 openid；H5 无云端会失败并被捕获）
     try {
       const loginRes = await callFunction<LoginResult>('login')
       const mergedUser: UserInfo = {

@@ -1,8 +1,8 @@
 {
-  "name": "taro_template",
+  "name": "qianqunale-miniprogram",
   "version": "1.0.0",
   "private": true,
-  "description": "taro_template",
+  "description": "钱去哪了小程序",
   "templateInfo": {
     "name": "react",
     "typescript": true,

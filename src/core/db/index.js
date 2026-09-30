@@ -86,7 +86,7 @@ async function initSchema(db) {
   }
 }
 
-/** 首启动写入默认分类 + Mock 数据 */
+/** 首启动写入默认分类（不注入任何交易假数据） */
 async function seedDefaults(db) {
   const now = Date.now();
   // 【修改 P0】getFirstAsync 直接返回行对象 {count: N}（或 null），

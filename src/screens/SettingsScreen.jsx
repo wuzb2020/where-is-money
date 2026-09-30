@@ -154,7 +154,7 @@ export default function SettingsScreen({ navigation }) {
               <MaterialCommunityIcons name="wallet" size={26} color="#fff" />
             </View>
             <View style={{ marginLeft: 14, flex: 1 }}>
-              <Text style={[styles.walletName, { color: theme.text900 }]}>随手记 Lite</Text>
+              <Text style={[styles.walletName, { color: theme.text900 }]}>钱去哪了</Text>
               <Text style={{ color: theme.text500, fontSize: 12 }}>
                 本地账本 · {recordCount} 条记录 · 完全离线
               </Text>

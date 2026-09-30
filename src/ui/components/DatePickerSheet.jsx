@@ -1,5 +1,5 @@
-// 日期时间选择底部弹层：年/月/日/时/分 滚轮 + 快捷选项
-// 替代手动输入 YYYY-MM-DD 的旧弹窗
+// 日期选择底部弹层：年/月/日 滚轮 + 快捷选项
+// 记账日期只精确到天（不再选择时分）
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, Text, View, TouchableOpacity, StyleSheet } from 'react-native';
 import dayjs from 'dayjs';
@@ -86,13 +86,12 @@ function range(start, end) {
 }
 
 const QUICK_OPTIONS = [
-  { key: 'now', label: '现在' },
-  { key: 'today12', label: '今天 12:00' },
-  { key: 'today18', label: '今天 18:30' },
-  { key: 'yesterday', label: '昨天此时' },
+  { key: 'today', label: '今天' },
+  { key: 'yesterday', label: '昨天' },
+  { key: 'beforeYesterday', label: '前天' },
 ];
 
-export default function DatePickerSheet({ visible, value, onClose, onConfirm }) {
+export default function DatePickerSheet({ visible, value, title = '选择日期', onClose, onConfirm }) {
   const { theme } = useAppTheme();
   const styles = useStyles();
 
@@ -100,8 +99,6 @@ export default function DatePickerSheet({ visible, value, onClose, onConfirm }) 
   const [year, setYear] = useState(initial.year());
   const [month, setMonth] = useState(initial.month() + 1);
   const [day, setDay] = useState(initial.date());
-  const [hour, setHour] = useState(initial.hour());
-  const [minute, setMinute] = useState(initial.minute());
 
   // 每次打开时用 value 重置
   useEffect(() => {
@@ -110,8 +107,6 @@ export default function DatePickerSheet({ visible, value, onClose, onConfirm }) 
       setYear(d.year());
       setMonth(d.month() + 1);
       setDay(d.date());
-      setHour(d.hour());
-      setMinute(d.minute());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
@@ -121,33 +116,27 @@ export default function DatePickerSheet({ visible, value, onClose, onConfirm }) 
   const months = range(1, 12);
   const daysInMonth = dayjs(`${year}-${String(month).padStart(2, '0')}-01`).daysInMonth();
   const days = range(1, daysInMonth);
-  const hours = range(0, 23);
-  const minutes = range(0, 59);
   const safeDay = Math.min(day, daysInMonth);
 
   const applyQuick = (key) => {
     let d = dayjs();
-    if (key === 'today12') d = d.hour(12).minute(0).second(0);
-    else if (key === 'today18') d = d.hour(18).minute(30).second(0);
-    else if (key === 'yesterday') d = d.subtract(1, 'day');
-    else d = d.second(0);
+    if (key === 'yesterday') d = d.subtract(1, 'day');
+    else if (key === 'beforeYesterday') d = d.subtract(2, 'day');
     setYear(d.year());
     setMonth(d.month() + 1);
     setDay(d.date());
-    setHour(d.hour());
-    setMinute(d.minute());
   };
 
   const handleConfirm = () => {
     const ts = dayjs()
       .year(year).month(month - 1).date(safeDay)
-      .hour(hour).minute(minute).second(0).millisecond(0)
+      .startOf('day')
       .valueOf();
     onConfirm?.(ts);
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="选择日期时间">
+    <BottomSheet visible={visible} onClose={onClose} title={title}>
       <View style={styles.quickRow}>
         {QUICK_OPTIONS.map((q) => (
           <TouchableOpacity
@@ -162,11 +151,9 @@ export default function DatePickerSheet({ visible, value, onClose, onConfirm }) 
       </View>
 
       <View style={styles.wheelsRow}>
-        <Wheel data={years} value={year} onChange={setYear} unit="年" width={76} />
-        <Wheel data={months} value={month} onChange={setMonth} unit="月" width={62} />
-        <Wheel data={days} value={safeDay} onChange={setDay} unit="日" width={62} />
-        <Wheel data={hours} value={hour} onChange={setHour} unit="时" width={62} />
-        <Wheel data={minutes} value={minute} onChange={setMinute} unit="分" width={62} />
+        <Wheel data={years} value={year} onChange={setYear} unit="年" width={90} />
+        <Wheel data={months} value={month} onChange={setMonth} unit="月" width={80} />
+        <Wheel data={days} value={safeDay} onChange={setDay} unit="日" width={80} />
       </View>
 
       <View style={styles.btnRow}>

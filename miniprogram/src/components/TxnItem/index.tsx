@@ -3,7 +3,7 @@ import { View, Text } from '@tarojs/components'
 import classnames from 'classnames'
 import type { Txn } from '@/types'
 import { fenToText } from '@/utils/amount'
-import { formatTime } from '@/utils/date'
+import { formatDateDay } from '@/utils/date'
 import styles from './index.module.scss'
 
 interface TxnItemProps {
@@ -32,7 +32,7 @@ function TxnItem({ txn, onClick, showDay }: TxnItemProps) {
         <Text className={classnames(styles.amount, isIncome && styles.income)}>
           {isIncome ? '+' : '-'}{fenToText(txn.amount)}
         </Text>
-        {showDay && <Text className={styles.time}>{formatTime(txn.date)}</Text>}
+        {showDay && <Text className={styles.time}>{formatDateDay(txn.date)}</Text>}
       </View>
     </View>
   )

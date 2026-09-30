@@ -8,8 +8,7 @@ import { getCategories, type Category } from '@/constants/categories'
 import { yuanToFen } from '@/utils/amount'
 import {
   toDatePickerValue,
-  toTimePickerValue,
-  fromPickerValues
+  dayStart
 } from '@/utils/date'
 import type { TxnType } from '@/types'
 import CategoryGrid from '@/components/CategoryGrid'
@@ -77,17 +76,12 @@ function AddPage() {
 
   const quickDate = (mode: 'today' | 'yesterday') => {
     const base = mode === 'today' ? dayjs() : dayjs().subtract(1, 'day')
-    setDate(base.valueOf())
+    setDate(dayStart(base.valueOf()))
   }
 
   const onDateChange = (e) => {
     const dateStr = e.detail.value as string
-    setDate(fromPickerValues(dateStr, toTimePickerValue(date)))
-  }
-
-  const onTimeChange = (e) => {
-    const timeStr = e.detail.value as string
-    setDate(fromPickerValues(toDatePickerValue(date), timeStr))
+    setDate(dayStart(dayjs(dateStr).valueOf()))
   }
 
   const onSave = () => {
@@ -105,7 +99,7 @@ function AddPage() {
       categoryId: category.id,
       amount: fen,
       description: desc.trim(),
-      date
+      date: dayStart(date)
     }
     if (editUuid) {
       updateTxn(editUuid, payload)
@@ -163,12 +157,6 @@ function AddPage() {
             <Text className={styles.quickChip} onClick={() => quickDate('yesterday')}>昨天</Text>
           </View>
         </View>
-        <Picker mode='time' value={toTimePickerValue(date)} onChange={onTimeChange}>
-          <View className={styles.formRow}>
-            <Text className={styles.formLabel}>时间</Text>
-            <Text className={styles.formValue}>{dayjs(date).format('HH:mm')}</Text>
-          </View>
-        </Picker>
         <View className={styles.formRow}>
           <Text className={styles.formLabel}>备注</Text>
           <Input

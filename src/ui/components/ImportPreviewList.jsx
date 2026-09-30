@@ -10,7 +10,7 @@ import EmptyState from '../primitives/EmptyState';
 import { useAppTheme, makeStyles, cx } from '../themeHelper';
 import * as Haptic from '../../core/utils/haptics';
 import { formatAmount, fenToYuan, yuanToFen } from '../../core/utils/amount';
-import { formatDateTime } from '../../core/utils/date';
+import { formatDate } from '../../core/utils/date';
 
 /**
  * 文件导入预览列表 + 批量操作区
@@ -85,7 +85,7 @@ export default function ImportPreviewList({
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
             <MaterialCommunityIcons name="calendar-outline" size={12} color={theme.text500} />
             <Text style={[styles.meta, { color: theme.text500, marginLeft: 3 }]}>
-              {formatDateTime(row.date)}
+              {formatDate(row.date)}
             </Text>
             {row._rowNum != null ? (
               <Text style={[styles.meta, { color: theme.text500, marginLeft: 8 }]}>行 {row._rowNum}</Text>

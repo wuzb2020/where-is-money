@@ -23,21 +23,25 @@ export function formatDate(ts) {
   return dayjs(ts).format('YYYY-MM-DD');
 }
 
-/** 格式化展示：今天/昨天/前天/MM-DD HH:mm */
+/** 格式化展示：今天/昨天/前天/周X/MM-DD（精确到天，不含时间） */
 export function formatFriendly(ts) {
   if (!ts) return '';
   const d = dayjs(ts);
   const today = dayjs().startOf('day');
   const diffDay = d.startOf('day').diff(today, 'day');
-  const timePart = d.format('HH:mm');
-  if (diffDay === 0) return `今天 ${timePart}`;
-  if (diffDay === -1) return `昨天 ${timePart}`;
-  if (diffDay === -2) return `前天 ${timePart}`;
+  if (diffDay === 0) return '今天';
+  if (diffDay === -1) return '昨天';
+  if (diffDay === -2) return '前天';
   if (diffDay >= -6 && diffDay < 0) {
     const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    return `${weekdays[d.day()]} ${timePart}`;
+    return weekdays[d.day()];
   }
-  return d.format('MM-DD HH:mm');
+  return d.format('MM-DD');
+}
+
+/** 归一化到当天 0 点：记账日期全局只精确到天，写入前统一去掉时分秒 */
+export function dayStart(ts) {
+  return dayjs(ts || Date.now()).startOf('day').valueOf();
 }
 
 /** 计算某预设范围的 start/end 时间戳（end 为不包含的下一天 0 点） */

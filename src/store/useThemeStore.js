@@ -21,8 +21,6 @@ export const useThemeStore = create(
       notificationGranted: false,
       // 是否已显示过引导页
       onboardingDone: false,
-      // 首次启动 Mock 数据已注入
-      mockInjected: false,
       // 最近使用分类 ID（LRU，最多 4 个）
       recentCategoryIds: [],
 
@@ -41,7 +39,6 @@ export const useThemeStore = create(
       setDailyReminder: (cfg) => set((s) => ({ dailyReminder: { ...s.dailyReminder, ...cfg } })),
       setNotificationGranted: (granted) => set({ notificationGranted: granted }),
       setOnboardingDone: (v = true) => set({ onboardingDone: v }),
-      setMockInjected: (v = true) => set({ mockInjected: v }),
 
       /** 使用分类时，推入「最近使用」LRU（最多 4 个） */
       useCategory: (categoryId) => {
@@ -62,7 +59,6 @@ export const useThemeStore = create(
         dailyReminder: s.dailyReminder,
         onboardingDone: s.onboardingDone,
         recentCategoryIds: s.recentCategoryIds,
-        mockInjected: s.mockInjected,
       }),
     },
   ),

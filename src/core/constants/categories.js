@@ -12,6 +12,7 @@ export const DEFAULT_EXPENSE_CATEGORIES = [
   { name: '娱乐', icon: 'gamepad-variant', keywords: ['电影', 'KTV', '游戏', 'Steam', '网吧', '演唱会', '门票'], colorIndex: 7 },
   { name: '日用', icon: 'cart', keywords: ['超市', '便利店', '沃尔玛', '盒马', '永辉', '纸巾', '洗漱'], colorIndex: 8 },
   { name: '通讯', icon: 'cellphone', keywords: ['话费', '流量', '移动', '联通', '电信', '宽带'], colorIndex: 9 },
+  { name: '还款', icon: 'credit-card-sync', keywords: ['信用借还', '信用卡还款', '花呗自动还款', '花呗还款', '还款成功', '还款', '还贷', '借呗', '白条', '应还'], colorIndex: 4 },
   { name: '学习', icon: 'book-open-page-variant', keywords: ['书', '课程', '培训', '得到', '极客', '买书', '学费'], colorIndex: 10 },
   { name: '旅行', icon: 'airplane', keywords: ['机票', '酒店', '景点', '携程', '去哪儿', '民宿', '门票'], colorIndex: 11 },
   { name: '宠物', icon: 'paw', keywords: ['宠物', '猫粮', '狗粮', '宠物医院'], colorIndex: 0 },
@@ -31,11 +32,10 @@ export const DEFAULT_INCOME_CATEGORIES = [
 // 快捷金额（数字键盘顶部 Chip）
 export const QUICK_AMOUNTS = [10, 20, 50, 100, 500];
 
-// 快捷时间范围选项（首页筛选）
+// 快捷时间范围选项（首页筛选）。自定义范围由末尾带日历图标的独立 chip 进入，不在此列
 export const DATE_RANGE_PRESETS = [
   { key: 'week7', label: '近7天' },
   { key: 'month', label: '本月' },
   { key: 'prevMonth', label: '上月' },
   { key: 'day30', label: '近30天' },
-  { key: 'custom', label: '自定义' },
 ];

@@ -4,7 +4,7 @@ import { ImportTemplateDao, CategoryDao } from '../db';
 import { extractBestDate } from './DateExtractor';
 import { classifyType, matchCategory } from './CategoryMatcher';
 import { yuanToFen } from '../utils/amount';
-import { dayjs } from '../utils/date';
+import { dayjs, dayStart } from '../utils/date';
 
 /** 列模糊匹配关键词 */
 const COLUMN_KEYWORDS = {
@@ -125,7 +125,8 @@ async function rowToCandidate(row, mapping) {
   }
 
   return {
-    date,
+    // 记账日期只精确到天，丢弃 Excel 中的时分秒
+    date: dayStart(date),
     type,
     categoryId,
     amount: amountFen,

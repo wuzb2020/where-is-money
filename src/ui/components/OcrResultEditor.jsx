@@ -8,7 +8,7 @@ import SegmentedControl from '../primitives/SegmentedControl';
 import Chip from '../primitives/Chip';
 import { useAppTheme, makeStyles, cx } from '../themeHelper';
 import { fenToYuan, yuanToFen } from '../../core/utils/amount'; // 【修改】formatAmount 已不再使用
-import { formatDateTime } from '../../core/utils/date';
+import { formatDate } from '../../core/utils/date';
 
 /**
  * OCR 识别结果：单张图片的 N 条 parsed 可编辑卡片列表
@@ -187,9 +187,9 @@ function ParsedCard({ tx, idx, theme, styles, cat, onChange, onRemove, onPickCat
         </TouchableOpacity>
       </View>
 
-      {/* 日期时间【修改】包 TouchableOpacity 接通 onPickDate，可修改识别错误的日期 */}
+      {/* 日期【修改】包 TouchableOpacity 接通 onPickDate，可修改识别错误的日期 */}
       <View style={{ marginTop: 10 }}>
-        <Text style={[styles.fieldLabel, { color: theme.text700 }]}>日期时间</Text>
+        <Text style={[styles.fieldLabel, { color: theme.text700 }]}>日期</Text>
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => onPickDate?.(idx)}
@@ -197,7 +197,7 @@ function ParsedCard({ tx, idx, theme, styles, cat, onChange, onRemove, onPickCat
         >
           <MaterialCommunityIcons name="calendar-edit" size={18} color={theme.primary} style={{ marginRight: 10 }} />
           <Text style={[styles.catNameText, { color: theme.text900, flex: 1 }]}>
-            {formatDateTime(tx.date)}
+            {formatDate(tx.date)}
           </Text>
           <MaterialCommunityIcons name="chevron-right" size={18} color={theme.text500} />
         </TouchableOpacity>

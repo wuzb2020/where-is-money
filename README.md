@@ -1,6 +1,6 @@
-# 随手记 Lite · 千群乐记账 App
+# 钱去哪了 · 千群乐记账 App
 
-> **状态**：✅ Metro 打包验证通过（1258 modules / 0 error），首次启动自带 20 条 Mock 数据可直接预览效果。
+> **状态**：✅ Metro 打包验证通过（1258 modules / 0 error），首启动即为空账本，不注入任何 Mock/演示数据。
 
 ## 📦 技术栈
 
@@ -12,7 +12,7 @@
 | 图表 | **react-native-chart-kit**（甜甜圈饼图 + 分类图例） |
 | 手势 | **react-native-gesture-handler**（列表滑动删除/复制/编辑 + Swipeable） |
 | 动画 | **react-native-reanimated 3**（骨架屏呼吸光效） |
-| OCR | Mock 模式（5 种真实账单样例循环）→ 可无缝切到 **Google ML Kit Chinese** 离线 SDK |
+| OCR | 真实识别：原生 **Google ML Kit Chinese** 离线 SDK；Web 端 **Tesseract.js**（多策略+图像预处理）；环境不可用时直接抛错 |
 | Excel 解析 | **SheetJS (xlsx)** + 智能表头匹配 + 列模板记忆学习 |
 | Word 解析 | **mammoth**（docx → 文本行级 + 内嵌图片走 OCR） |
 | 金额/日期智能抽取 | 自定义正则 12 条金额模式 + 8 种日期格式兼容 + OCR 字符级纠错（O→0/B→8/Y→¥） |
@@ -64,9 +64,8 @@ npm start
 
 启动后 → 首启动自动：
 1. 显示 3 页引导（介绍三种记账方式）
-2. 创建 SQLite 数据库 + 默认分类（支出 15/ 收入 6）
-3. **注入 20 条 Mock 数据**（近 30 天、覆盖各分类、包含工资/房租/外卖/iQOO 手机/滴滴等真实场景）
-4. 饼图立即能看、汇总卡有数据 → 点底部「✏️手动记账」开始体验 3 秒记账！
+2. 创建 SQLite 数据库 + 默认分类（支出 16/ 收入 6）
+3. **不注入任何演示数据**，账本为空 → 点底部「🖼️拍照/相册」或「✏️手动记账」开始记第一笔！
 
 ### 常用终端按键
 
@@ -82,23 +81,20 @@ npm start
 
 ## 🔧 进阶配置（可选）
 
-### 1. 开启 **真实 OCR（ML Kit 离线中文识别）**
+### 1. 真实 OCR 说明
 
-OCR 服务默认跑 Mock，5 条假账单样例循环识别（能预览 UI 流程）。要接入真实识别：
+OCR 全部为真实识别，无任何假数据降级：
+
+- **原生 App（自定义 Dev/Release 构建）**：Google ML Kit 中文离线识别，完全离线、不联网。
+  需要原生模块，请使用 Dev Client 而非 Expo Go：
 
 ```bash
-# 1. 切换到 Expo Dev Client（因为要加原生 SDK，Expo Go 不支持）
 npx expo install @react-native-ml-kit/text-recognition
-
-# 2. 打开 src/core/services/OcrService.js
-#    将第 16 行改为：
-const USE_REAL_ML_KIT = true;
-
-# 3. 构建自定义客户端（首次编译需要）
 npx expo prebuild && npx expo run:android    # 或 run:ios
 ```
 
-识别准确率（中文账单）约 95%，且**完全离线**，不联网。
+- **Web 预览**：Tesseract.js（chi_sim 语言包），内置缩放/灰度/二值化预处理与多策略识别。
+- **Expo Go**：无原生 ML Kit 模块，识别会直接抛错，页面展示真实失败原因与重试入口（绝不造假数据）。
 
 ### 2. 打包上线（Android APK / iOS IPA）
 
@@ -125,7 +121,7 @@ eas build --platform ios --profile preview         # iOS IPA（需要 Apple 开�
 
 ```
 qianqunale-accounting/
-├── App.js                      入口（初始化DB+Mock+Providers）
+├── App.js                      入口（初始化DB+Providers，不注入演示数据）
 ├── app.json / babel.config.js / package.json / metro.config.js
 ├── assets/                     图标/启动图/字体占位
 └── src/
@@ -163,5 +159,5 @@ A：预览列表里点击那条记录的分类气泡 → 弹分类选择器调�
 **Q：换手机怎么带数据？**
 A：设置 → 备份为 JSON → 分享保存到云盘；新手机装 App → 设置 → 从备份恢复 → 选那个 JSON 文件即可。
 
-**Q：怎么清空 Mock 数据开始记真实账？**
-A：设置 → 最底部「清空所有交易记录」（分类设置会保留），所有 Mock 数据会被删除。
+**Q：怎么清空所有交易记录重新开始？**
+A：设置 → 最底部「清空所有交易记录」（分类设置会保留），全部交易记录会被删除。

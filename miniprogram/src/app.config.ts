@@ -11,7 +11,7 @@ export default defineAppConfig({
   window: {
     backgroundTextStyle: 'dark',
     navigationBarBackgroundColor: '#6366f1',
-    navigationBarTitleText: '钱去哪儿了',
+    navigationBarTitleText: '钱去哪了',
     navigationBarTextStyle: 'white',
     backgroundColor: '#f5f6fa'
   },

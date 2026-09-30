@@ -14,16 +14,15 @@ export const formatDateLabel = (ts: number): string => {
   return d.format('M月D日')
 }
 
-export const formatTime = (ts: number): string => dayjs(ts).format('HH:mm')
+/** 完整日期（精确到天）：YYYY年M月D日 */
+export const formatDateDay = (ts: number): string => dayjs(ts).format('YYYY年M月D日')
 
-export const formatDateTime = (ts: number): string => dayjs(ts).format('YYYY年M月D日 HH:mm')
+/** 归一化到当天 0 点：记账日期全局只精确到天 */
+export const dayStart = (ts: number = Date.now()): number =>
+  dayjs(ts).startOf('day').valueOf()
 
 // Picker 用
 export const toDatePickerValue = (ts: number): string => dayjs(ts).format('YYYY-MM-DD')
-export const toTimePickerValue = (ts: number): string => dayjs(ts).format('HH:mm')
-
-export const fromPickerValues = (dateStr: string, timeStr: string): number =>
-  dayjs(`${dateStr} ${timeStr}`).valueOf()
 
 // 最近 n 个月（含当月），返回 [{ key, label }]
 export const recentMonths = (n: number): { key: string; label: string; start: number; end: number }[] => {

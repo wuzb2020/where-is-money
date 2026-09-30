@@ -20,7 +20,7 @@ import { useThemeStore } from '../store/useThemeStore';
 import Toast from '../ui/primitives/Toast';
 import * as Haptic from '../core/utils/haptics';
 import { dayjs } from '../core/utils/date';
-import { formatDateTime } from '../core/utils/date';
+import { formatDate, dayStart } from '../core/utils/date';
 import { yuanToFen } from '../core/utils/amount';
 
 /**
@@ -52,7 +52,7 @@ export default function ManualEntryScreen({ navigation, route }) {
   const [type, setType] = React.useState(initial.type || 'expense');
   const [amountFen, setAmountFen] = React.useState(initial.amount || 0);
   const [categoryId, setCategoryId] = React.useState(null);
-  const [dateTs, setDateTs] = React.useState(initial.date || Date.now());
+  const [dateTs, setDateTs] = React.useState(dayStart(initial.date || Date.now()));
   const [desc, setDesc] = React.useState(initial.description || '');
   const [images, setImages] = React.useState(initial.imagePaths || []);
   const [loading, setLoading] = React.useState(false);
@@ -121,7 +121,7 @@ export default function ManualEntryScreen({ navigation, route }) {
     try {
       useCategory(categoryId);
       const payload = {
-        date: dateTs, type, categoryId, amount: amountFen,
+        date: dayStart(dateTs), type, categoryId, amount: amountFen,
         description: desc.trim(), source: 'manual', imagePaths: images,
       };
       if (editId) {
@@ -163,14 +163,14 @@ export default function ManualEntryScreen({ navigation, route }) {
     try {
       useCategory(categoryId);
       await txStore.create({
-        date: dateTs, type, categoryId, amount: amountFen,
+        date: dayStart(dateTs), type, categoryId, amount: amountFen,
         description: desc.trim(), source: 'manual', imagePaths: images,
       });
       // 不清空分类和类型，只清金额+描述
       setAmountFen(0);
       setDesc('');
       setImages([]);
-      setDateTs(Date.now());
+      setDateTs(dayStart());
       Toast.show({ type: 'success', message: `已记账，继续写下一条～` });
     } finally {
       setLoading(false);
@@ -280,10 +280,10 @@ export default function ManualEntryScreen({ navigation, route }) {
               style={[styles.fieldRow, { backgroundColor: theme.bgCard }]}
               onPress={() => setDatePickerVisible(true)}
             >
-              <View style={styles.fieldIcon}><MaterialCommunityIcons name="calendar-clock-outline" size={18} color={theme.primary} /></View>
+              <View style={styles.fieldIcon}><MaterialCommunityIcons name="calendar-outline" size={18} color={theme.primary} /></View>
               <Text style={[styles.fieldLabel, { color: theme.text500 }]}>日期</Text>
               <Text style={[styles.fieldValueRight, { color: theme.text900, flex: 1, textAlign: 'right' }]}>
-                {formatDateTime(dateTs)}
+                {formatDate(dateTs)}
               </Text>
               <MaterialCommunityIcons name="chevron-right" size={18} color={theme.text500} />
             </TouchableOpacity>
@@ -383,7 +383,7 @@ export default function ManualEntryScreen({ navigation, route }) {
         }}
       />
 
-      {/* 日期时间滚轮选择器 */}
+      {/* 日期滚轮选择器 */}
       <DatePickerSheet
         visible={datePickerVisible}
         value={dateTs}

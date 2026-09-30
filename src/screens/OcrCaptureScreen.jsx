@@ -300,7 +300,7 @@ export default function OcrCaptureScreen({ navigation }) {
         }}
       />
 
-      {/* 日期时间滚轮选择器 */}
+      {/* 日期滚轮选择器 */}
       <DatePickerSheet
         visible={dateTarget != null}
         value={

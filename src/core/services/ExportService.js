@@ -2,7 +2,7 @@
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { TransactionDao, CategoryDao } from '../db';
-import { formatDateTime, dayjs } from '../utils/date';
+import { formatDateTime, formatDate, dayjs } from '../utils/date';
 import { fenToYuan, formatAmount } from '../utils/amount';
 import { PATHS, ensureDirs } from '../utils/storage';
 
@@ -13,7 +13,7 @@ export async function exportToExcel() {
   const records = await TransactionDao.listAllForExport();
 
   const rows = records.map((r) => ({
-    '日期': formatDateTime(r.date),
+    '日期': formatDate(r.date),
     '类型': r.type === 'income' ? '收入' : '支出',
     '分类': r.categoryName,
     '金额(元)': fenToYuan(r.amount),

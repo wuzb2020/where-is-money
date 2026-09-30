@@ -3,22 +3,37 @@ import { INCOME_KEYWORDS, EXPENSE_KEYWORDS, PLATFORM_CATEGORY_KEYWORDS } from '.
 import { CategoryDao } from '../db';
 
 /**
+ * OCR 文本归一化：Tesseract 常在汉字之间插入空格（如"还 款 成 功"），
+ * 导致关键词 includes 失配。连续折叠汉字之间的空白。
+ */
+function normalizeText(text) {
+  let out = text;
+  let prev;
+  do {
+    prev = out;
+    out = out.replace(/([\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])/g, '$1');
+  } while (out !== prev);
+  return out;
+}
+
+/**
  * 判断收支类型
  * @returns {Promise<'income'|'expense'>} 默认 expense
  */
 export async function classifyType(text) {
   if (!text) return 'expense';
+  const norm = normalizeText(text);
   let score = 0;
   for (const kw of INCOME_KEYWORDS) {
-    if (text.includes(kw)) score += 1;
+    if (norm.includes(kw)) score += 1;
   }
   for (const kw of EXPENSE_KEYWORDS) {
-    if (text.includes(kw)) score -= 1;
+    if (norm.includes(kw)) score -= 1;
   }
   // PLATFORM 命中默认算支出（大部分平台都是消费）
   for (const item of PLATFORM_CATEGORY_KEYWORDS) {
     for (const kw of item.platform) {
-      if (text.includes(kw)) { score -= 0.5; break; }
+      if (norm.includes(kw)) { score -= 0.5; break; }
     }
   }
   return score > 0 ? 'income' : 'expense';
@@ -30,12 +45,13 @@ export async function classifyType(text) {
  */
 export async function matchCategory(text, type = 'expense') {
   if (!text) return { categoryId: null, categoryName: '' };
+  const norm = normalizeText(text);
 
   // Step 1: 平台关键词 → 分类名
   let matchedName = null;
   for (const item of PLATFORM_CATEGORY_KEYWORDS) {
     for (const kw of item.platform) {
-      if (text.includes(kw)) { matchedName = item.category; break; }
+      if (norm.includes(kw)) { matchedName = item.category; break; }
     }
     if (matchedName) break;
   }
@@ -47,10 +63,10 @@ export async function matchCategory(text, type = 'expense') {
     for (const cat of categories) {
       let score = 0;
       // 分类名直接包含
-      if (text.includes(cat.name)) score += 3;
+      if (norm.includes(cat.name)) score += 3;
       // 关键词命中
       for (const kw of cat.keywords || []) {
-        if (text.includes(kw)) score += 1;
+        if (norm.includes(kw)) score += 1;
       }
       if (score > bestScore) { bestScore = score; best = cat; }
     }

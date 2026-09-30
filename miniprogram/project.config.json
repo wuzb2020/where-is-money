@@ -1,8 +1,8 @@
 {
   "miniprogramRoot": "dist/",
   "cloudfunctionRoot": "cloudfunctions/",
-  "projectname": "taro_template",
-  "description": "taro_template",
+  "projectname": "钱去哪了",
+  "description": "钱去哪了",
   "appid": "touristappid",
   "setting": {
     "urlCheck": true,

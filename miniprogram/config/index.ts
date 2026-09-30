@@ -6,7 +6,7 @@ import vitePluginImp from 'vite-plugin-imp';
 // https://taro-docs.jd.com/docs/next/config#defineconfig-辅助函数
 export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
   const baseConfig: UserConfigExport<'webpack5'> = {
-    projectName: 'taro_template',
+    projectName: 'qianqunale-miniprogram',
     date: '2025-12-10',
     designWidth: 375,
     deviceRatio: {

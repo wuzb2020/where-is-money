@@ -4,7 +4,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import classnames from 'classnames'
 import { useAccountStore } from '@/store/useAccountStore'
 import { fenToText } from '@/utils/amount'
-import { formatDateTime } from '@/utils/date'
+import { formatDateDay } from '@/utils/date'
 import Empty from '@/components/Empty'
 import styles from './index.module.scss'
 
@@ -64,8 +64,8 @@ function DetailPage() {
           <Text className={styles.rowValue}>{isIncome ? '收入' : '支出'}</Text>
         </View>
         <View className={styles.row}>
-          <Text className={styles.rowLabel}>时间</Text>
-          <Text className={styles.rowValue}>{formatDateTime(txn.date)}</Text>
+          <Text className={styles.rowLabel}>日期</Text>
+          <Text className={styles.rowValue}>{formatDateDay(txn.date)}</Text>
         </View>
         <View className={styles.row}>
           <Text className={styles.rowLabel}>备注</Text>

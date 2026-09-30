@@ -16,7 +16,7 @@ import Toast from '../ui/primitives/Toast';
 import { useTransactionStore } from '../store/useTransactionStore';
 import { useCategoryStore } from '../store/useCategoryStore';
 import * as Haptic from '../core/utils/haptics';
-import { formatDateTime, dayjs } from '../core/utils/date';
+import { formatDateTime, formatDate } from '../core/utils/date';
 import { formatAmount, yuanToFen, fenToYuan } from '../core/utils/amount';
 
 /**
@@ -182,7 +182,7 @@ export default function TransactionDetailScreen({ navigation, route }) {
             format={(v) => `${isIncome ? '+' : '-'}${formatAmount(Math.round(v))}`}
           />
           <Text style={[styles.dateText, { color: theme.text500 }]}>
-            {formatDateTime(mode === 'edit' ? draft.date : tx.date)}
+            {formatDate(mode === 'edit' ? draft.date : tx.date)}
           </Text>
           <Chip
             label={sourceBadge.label}
@@ -200,7 +200,7 @@ export default function TransactionDetailScreen({ navigation, route }) {
               <Row label="类型" value={isIncome ? '💰 收入' : '💸 支出'} valueColor={isIncome ? theme.success : theme.danger} />
               <Row label="分类" value={cat?.name || '未分类'} />
               <Row label="金额" value={formatAmount(amountFen)} valueColor={isIncome ? theme.success : theme.danger} bold />
-              <Row label="日期" value={formatDateTime(mode === 'edit' ? draft.date : tx.date)} />
+              <Row label="日期" value={formatDate(mode === 'edit' ? draft.date : tx.date)} />
             </Section>
             <Section title="描述">
               <Text style={{ color: theme.text900, fontSize: 14, lineHeight: 22 }}>
@@ -268,8 +268,8 @@ export default function TransactionDetailScreen({ navigation, route }) {
               style={[styles.catRow, { backgroundColor: theme.bgCard }]}
               onPress={() => setDateModal(true)}
             >
-              <Text style={{ color: theme.text500, fontWeight: '600' }}>日期时间</Text>
-              <Text style={{ color: theme.text900, fontWeight: '700' }}>{formatDateTime(draft.date)}</Text>
+              <Text style={{ color: theme.text500, fontWeight: '600' }}>日期</Text>
+              <Text style={{ color: theme.text900, fontWeight: '700' }}>{formatDate(draft.date)}</Text>
             </TouchableOpacity>
 
             <Input
@@ -326,7 +326,7 @@ export default function TransactionDetailScreen({ navigation, route }) {
         onSelect={(c) => setDraft({ ...draft, categoryId: c.id })}
       />
 
-      {/* 日期时间滚轮选择器 */}
+      {/* 日期滚轮选择器 */}
       <DatePickerSheet
         visible={dateModal}
         value={draft?.date}
