@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, TouchableOpacity, KeyboardAvoidingView,
+  View, Text, TouchableOpacity, TextInput, KeyboardAvoidingView,
   Platform, ScrollView, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,8 +10,6 @@ import { useAppTheme, makeStyles, cx } from '../ui/themeHelper';
 import SegmentedControl from '../ui/primitives/SegmentedControl';
 import PressableScale from '../ui/primitives/PressableScale';
 import BottomSheet from '../ui/primitives/BottomSheet';
-import Input from '../ui/primitives/Input';
-import Button from '../ui/primitives/Button';
 import { AmountDisplay, AmountKeypad } from '../ui/primitives/AmountInput';
 import CategoryPickerSheet from '../ui/components/CategoryPickerSheet';
 import CategoryQuickGrid from '../ui/components/CategoryQuickGrid';
@@ -64,10 +62,10 @@ export default function ManualEntryScreen({ navigation, route }) {
   const [images, setImages] = React.useState(initial.imagePaths || []);
   const [loading, setLoading] = React.useState(false);
 
-  // 分类全量选择 Sheet / 日期滚轮 Sheet / 备注 Sheet / 附加图片 Sheet
+  // 分类全量选择 Sheet / 日期滚轮 Sheet / 附加图片 Sheet
   const [pickerVisible, setPickerVisible] = React.useState(false);
   const [datePickerVisible, setDatePickerVisible] = React.useState(false);
-  const [noteVisible, setNoteVisible] = React.useState(false);
+  const [noteEditing, setNoteEditing] = React.useState(false); // 备注行内编辑态
   const [imageSheetVisible, setImageSheetVisible] = React.useState(false);
 
   // 关闭拦截确认框
@@ -250,9 +248,10 @@ export default function ManualEntryScreen({ navigation, route }) {
           />
         </View>
 
-        {/* 常用分类宫格：弹性区（富余空间给更多行；超高时仅此区内部滚动） */}
+        {/* 常用分类宫格：弹性区（富余空间给更多行；超高时仅此区内部滚动）
+            备注行内编辑时收缩宫格，防止系统键盘遮住输入行（Android adjustResize 只压缩 flex 区） */}
         <ScrollView
-          style={{ flex: 1 }}
+          style={[{ flex: 1 }, noteEditing && { flexGrow: 0, flexShrink: 1, maxHeight: 116 }]}
           contentContainerStyle={{ paddingBottom: 8 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -265,25 +264,41 @@ export default function ManualEntryScreen({ navigation, route }) {
           />
         </ScrollView>
 
-        {/* 备注行：备注入口（左） + 图片入口（右），鲨鱼记账式一行直达 */}
+        {/* 备注行：备注入口（左） + 图片入口（右），点击备注原地进入行内编辑（不弹层） */}
         <View style={[styles.noteRow, { borderTopColor: theme.divider, backgroundColor: theme.bgPage }]}>
-          <PressableScale style={styles.notePress} onPress={() => setNoteVisible(true)}>
-            <MaterialCommunityIcons
-              name={desc.trim() ? 'text-long' : 'tooltip-outline'}
-              size={16}
-              color={desc.trim() ? theme.primary : theme.text500}
+          {noteEditing ? (
+            <TextInput
+              value={desc}
+              onChangeText={setDesc}
+              autoFocus
+              onBlur={() => setNoteEditing(false)}
+              onSubmitEditing={() => setNoteEditing(false)}
+              returnKeyType="done"
+              placeholder="添加备注…"
+              placeholderTextColor={theme.text500}
+              maxLength={200}
+              style={[styles.noteInput, { color: theme.text900 }]}
             />
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.noteText,
-                { color: desc.trim() ? theme.text900 : theme.text500 },
-                desc.trim() && { fontWeight: '700' },
-              ]}
-            >
-              {desc.trim() ? desc.trim() : '添加备注…'}
-            </Text>
-          </PressableScale>
+          ) : (
+            <PressableScale style={styles.notePress} onPress={() => setNoteEditing(true)}>
+              {/* 图标仅跟随内容状态，编辑/展示态保持一致 */}
+              <MaterialCommunityIcons
+                name={desc.trim() ? 'text-long' : 'tooltip-outline'}
+                size={16}
+                color={desc.trim() ? theme.primary : theme.text500}
+              />
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.noteText,
+                  { color: desc.trim() ? theme.text900 : theme.text500 },
+                  desc.trim() && { fontWeight: '700' },
+                ]}
+              >
+                {desc.trim() ? desc.trim() : '添加备注…'}
+              </Text>
+            </PressableScale>
+          )}
           <PressableScale
             style={[styles.imgEntry, { backgroundColor: images.length ? theme.primaryBg : theme.bgCard }]}
             onPress={() => setImageSheetVisible(true)}
@@ -323,29 +338,6 @@ export default function ManualEntryScreen({ navigation, route }) {
           />
         </View>
       </KeyboardAvoidingView>
-
-      {/* 备注 Sheet（避免系统键盘与数字键盘冲突） */}
-      <BottomSheet visible={noteVisible} onClose={() => setNoteVisible(false)} title="备注">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Input
-            placeholder="例如：淘宝买 iQOO 5e 手机 8+256G 蓝色"
-            value={desc}
-            onChangeText={setDesc}
-            multiline
-            autoFocus
-            maxLength={200}
-            containerStyle={{ marginVertical: 4 }}
-          />
-          <Button
-            size="full"
-            variant="primary"
-            style={{ marginTop: 8 }}
-            onPress={() => setNoteVisible(false)}
-          >
-            完成
-          </Button>
-        </KeyboardAvoidingView>
-      </BottomSheet>
 
       {/* 附加图片 Sheet */}
       <BottomSheet visible={imageSheetVisible} onClose={() => setImageSheetVisible(false)} title="附加图片（最多 3 张）">
@@ -458,6 +450,10 @@ const useStyles = makeStyles((theme) => ({
     gap: 6, paddingVertical: 6,
   },
   noteText: { fontSize: 13, flexShrink: 1 },
+  noteInput: {
+    flex: 1, fontSize: 13,
+    paddingVertical: 6, paddingHorizontal: 0,
+  },
   imgEntry: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 10, paddingVertical: 6,
