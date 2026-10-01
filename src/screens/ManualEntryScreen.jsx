@@ -248,10 +248,9 @@ export default function ManualEntryScreen({ navigation, route }) {
           />
         </View>
 
-        {/* 常用分类宫格：弹性区（富余空间给更多行；超高时仅此区内部滚动）
-            备注行内编辑时收缩宫格，防止系统键盘遮住输入行（Android adjustResize 只压缩 flex 区） */}
+        {/* 常用分类宫格：弹性区（富余空间给更多行；超高时仅此区内部滚动） */}
         <ScrollView
-          style={[{ flex: 1 }, noteEditing && { flexGrow: 0, flexShrink: 1, maxHeight: 116 }]}
+          style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: 8 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -274,8 +273,6 @@ export default function ManualEntryScreen({ navigation, route }) {
               onBlur={() => setNoteEditing(false)}
               onSubmitEditing={() => setNoteEditing(false)}
               returnKeyType="done"
-              placeholder="添加备注…"
-              placeholderTextColor={theme.text500}
               maxLength={200}
               style={[styles.noteInput, { color: theme.text900 }]}
             />
