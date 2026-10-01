@@ -1,5 +1,6 @@
-// 常用分类宫格（手动记账页快捷选类，鲨鱼记账式）
-// 4 列：最近使用（LRU）+ 默认高频分类补齐，末位「更多」打开全量选择 Sheet
+// 分类宫格（手动记账页，鲨鱼记账式图1）
+// 4 列全量展示当前类型所有分类，最近使用排最前，可随父级 ScrollView 下滑；
+// 末位「更多」打开全量选择/管理 Sheet
 // 注意：格子宽度 25% 时容器严禁再加 gap——4×25%+gap 会溢出换行成 3 列（上版 bug）
 import React from 'react';
 import { View, Text } from 'react-native';
@@ -8,9 +9,6 @@ import { useAppTheme, makeStyles, cx } from '../themeHelper';
 import PressableScale from '../primitives/PressableScale';
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { useThemeStore } from '../../store/useThemeStore';
-
-const GRID_SLOTS = 8;      // 总格数（含"更多"）
-const MORE_SLOTS = 1;      // 末尾"更多"占用格数
 
 export default function CategoryQuickGrid({
   type = 'expense',
@@ -29,24 +27,18 @@ export default function CategoryQuickGrid({
     [categories, type],
   );
 
-  // 最近使用优先，不足用池子顺序补齐；去重后截取 7 个
-  // 若当前选中分类不在宫格内（如编辑旧记录），替换末位注入，保证选中态始终可见
-  const quickCats = React.useMemo(() => {
+  // 全部展示：最近使用排最前，其余按原顺序跟上
+  const orderedCats = React.useMemo(() => {
     const map = new Map(pool.map((c) => [c.id, c]));
     const recent = recentIds
       .map((id) => map.get(id))
       .filter(Boolean);
     const rest = pool.filter((c) => !recentIds.includes(c.id));
-    const list = [...recent, ...rest].slice(0, GRID_SLOTS - MORE_SLOTS);
-    if (selectedId && !list.some((c) => c.id === selectedId)) {
-      const sel = map.get(selectedId);
-      if (sel) list[list.length - 1] = sel;
-    }
-    return list;
-  }, [pool, recentIds, selectedId]);
+    return [...recent, ...rest];
+  }, [pool, recentIds]);
 
   const cells = [
-    ...quickCats.map((cat) => ({ kind: 'cat', cat })),
+    ...orderedCats.map((cat) => ({ kind: 'cat', cat })),
     { kind: 'more' },
   ];
 
@@ -102,10 +94,6 @@ export default function CategoryQuickGrid({
           </PressableScale>
         );
       })}
-      {/* 空槽占位，保证 4 列对齐 */}
-      {Array.from({ length: Math.max(0, GRID_SLOTS - cells.length) }).map((_, i) => (
-        <View key={`__pad_${i}`} style={styles.cell} />
-      ))}
     </View>
   );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppTheme, makeStyles, cx } from '../themeHelper';
 import Chip from './Chip';
 import * as Haptic from '../../core/utils/haptics';
@@ -26,6 +27,7 @@ export function AmountDisplay({
   valueFen = 0,
   hint,            // 金额未就绪提示（如"先输入金额"），null 则不显示
   onChangeFen,
+  showQuick = true, // 快捷金额 Chip 栏（图2布局下关闭）
   style,
 }) {
   const { theme } = useAppTheme();
@@ -45,30 +47,40 @@ export function AmountDisplay({
       </View>
 
       {/* 快捷金额 Chip 栏 */}
-      <View style={styles.quickBar}>
-        {QUICK_AMOUNTS.map((v) => (
-          <Chip
-            key={v}
-            label={`¥${v}`}
-            variant="primary"
-            size="sm"
-            onPress={async () => {
-              await Haptic.impactLight();
-              onChangeFen?.(yuanToFen(v), String(v));
-            }}
-          />
-        ))}
-      </View>
+      {showQuick ? (
+        <View style={styles.quickBar}>
+          {QUICK_AMOUNTS.map((v) => (
+            <Chip
+              key={v}
+              label={`¥${v}`}
+              variant="primary"
+              size="sm"
+              onPress={async () => {
+                await Haptic.impactLight();
+                onChangeFen?.(yuanToFen(v), String(v));
+              }}
+            />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
 
+/**
+ * 数字键盘（图2布局）：
+ * 左 3 列数字区（7 8 9 / 4 5 6 / 1 2 3 / . 0 ⌫）
+ * 右列：[📅 今天]（改日期）+ [保存并继续]（跨 2 行高）+ [完成]（主色）
+ * 保存并继续 = 保存本条、清空金额+备注、类型保持选中
+ */
 export function AmountKeypad({
   valueFen = 0,    // 受控值：外部清零（如"保存并继续"）时同步清空输入串
   onChangeFen,
-  onAdd,
-  onConfirm,
-  showAdd = false,
+  dateLabel = '今天',  // 日期键文案
+  onDate,              // 点击日期键
+  onSaveNext,          // 保存并继续
+  saveNextDisabled = false,
+  onConfirm,           // 完成（保存并关闭）
   confirmDisabled = false,
   style,
 }) {
@@ -76,7 +88,7 @@ export function AmountKeypad({
   const styles = useStyles();
   const [yuanStr, setYuanStr] = React.useState('');
 
-  // 外部 valueFen 变化（快捷金额点击 / 保存并继续清零）→ 同步内部输入串
+  // 外部 valueFen 变化（保存并继续清零）→ 同步内部输入串
   React.useEffect(() => {
     const current = yuanToFen(parseFloat(yuanStr || '0'));
     if (current !== valueFen) {
@@ -100,9 +112,6 @@ export function AmountKeypad({
       case 'back':
         next = yuanStr.slice(0, -1);
         break;
-      case 'clear':
-        next = '';
-        break;
     }
     setYuanStr(next);
     onChangeFen?.(next ? yuanToFen(parseFloat(next || '0')) : 0, next);
@@ -110,57 +119,61 @@ export function AmountKeypad({
 
   return (
     <View style={cx(styles.keypad, style)}>
-      {KEYPAD_KEYS.map((row, r) => (
-        <View key={r} style={styles.keyrow}>
-          {row.map((k) => {
-            let content;
-            let keyStyle = null;
-            switch (k.type) {
-              case 'digit':
-              case 'dot':
-                content = <Text style={styles.keyText}>{k.type === 'dot' ? '.' : k.label}</Text>;
-                break;
-              case 'back':
-                content = <Text style={styles.keyIconText}>⌫</Text>;
-                break;
-              case 'clear':
-                content = <Text style={cx(styles.keyIconText, { color: theme.danger })}>清空</Text>;
-                break;
-              case 'add':
-                content = showAdd ? (
-                  <Text style={cx(styles.keyIconText, { color: theme.primary, fontWeight: '800' })}>+</Text>
-                ) : null;
-                break;
-              case 'confirm':
-                content = (
-                  <View style={cx(styles.confirmBtn, {
-                    backgroundColor: confirmDisabled ? theme.text300 : theme.primary,
-                  })}>
-                    <Text style={styles.confirmText}>✓ 保存</Text>
-                  </View>
-                );
-                keyStyle = styles.confirmKey;
-                break;
-            }
-            if (k.type === 'add' && !showAdd) return <View key={k.label || r + '-add'} style={{ flex: 1 }} />;
-            return (
+      {/* 左：数字区 3 列 × 4 行 */}
+      <View style={styles.padLeft}>
+        {DIGIT_ROWS.map((row, r) => (
+          <View key={r} style={styles.keyrow}>
+            {row.map((k) => (
               <TouchableOpacity
-                key={k.label || r}
+                key={k.label}
                 activeOpacity={0.6}
-                style={cx(styles.key, keyStyle)}
-                onPress={() => {
-                  if (k.type === 'confirm') { if (!confirmDisabled) onConfirm?.(); }
-                  else if (k.type === 'add') onAdd?.();
-                  else press(k.label, k.type);
-                }}
+                style={styles.key}
+                onPress={() => press(k.label, k.type)}
                 onPressIn={() => Haptic.impactLight()}
               >
-                {content}
+                {k.type === 'back'
+                  ? <MaterialCommunityIcons name="backspace-outline" size={20} color={theme.text700} />
+                  : <Text style={styles.keyText}>{k.type === 'dot' ? '.' : k.label}</Text>}
               </TouchableOpacity>
-            );
-          })}
-        </View>
-      ))}
+            ))}
+          </View>
+        ))}
+      </View>
+
+      {/* 右列：日期 / 保存并继续（跨2行）/ 完成 */}
+      <View style={styles.padRight}>
+        <TouchableOpacity
+          activeOpacity={0.6}
+          style={styles.key}
+          onPress={async () => { await Haptic.impactLight(); onDate?.(); }}
+        >
+          <MaterialCommunityIcons name="calendar-month-outline" size={14} color={theme.text700} />
+          <Text style={styles.dateKeyText} numberOfLines={1}>{dateLabel}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.6}
+          disabled={saveNextDisabled}
+          style={cx(styles.key, styles.keySpan2, saveNextDisabled && { opacity: 0.4 })}
+          onPress={async () => { await Haptic.impactLight(); onSaveNext?.(); }}
+        >
+          <Text style={cx(styles.saveNextText, { color: theme.primary })}>保存并继续</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.6}
+          disabled={confirmDisabled}
+          style={cx(styles.key, styles.confirmKey)}
+          onPress={() => { if (!confirmDisabled) onConfirm?.(); }}
+          onPressIn={() => Haptic.impactLight()}
+        >
+          <View style={cx(styles.confirmBtn, {
+            backgroundColor: confirmDisabled ? theme.text300 : theme.primary,
+          })}>
+            <Text style={styles.confirmText}>完成</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -169,9 +182,11 @@ export function AmountKeypad({
 export default function AmountInput({
   valueFen = 0,
   onChangeFen,
-  onAdd,
+  dateLabel,
+  onDate,
+  onSaveNext,
+  saveNextDisabled = false,
   onConfirm,
-  showAdd = false,
   confirmDisabled = false,
   hint,
 }) {
@@ -181,20 +196,23 @@ export default function AmountInput({
       <AmountKeypad
         valueFen={valueFen}
         onChangeFen={onChangeFen}
-        onAdd={onAdd}
+        dateLabel={dateLabel}
+        onDate={onDate}
+        onSaveNext={onSaveNext}
+        saveNextDisabled={saveNextDisabled}
         onConfirm={onConfirm}
-        showAdd={showAdd}
         confirmDisabled={confirmDisabled}
       />
     </View>
   );
 }
 
-const KEYPAD_KEYS = [
-  [{ label: '1', type: 'digit' }, { label: '2', type: 'digit' }, { label: '3', type: 'digit' }, { label: 'back', type: 'back' }],
-  [{ label: '4', type: 'digit' }, { label: '5', type: 'digit' }, { label: '6', type: 'digit' }, { label: 'clear', type: 'clear' }],
-  [{ label: '7', type: 'digit' }, { label: '8', type: 'digit' }, { label: '9', type: 'digit' }, { label: 'add', type: 'add' }],
-  [{ label: '.', type: 'dot' },   { label: '0', type: 'digit' }, { label: '00', type: 'digit' }, { label: 'OK',  type: 'confirm' }],
+// 左侧数字区（图2）：4 行 × 3 列
+const DIGIT_ROWS = [
+  [{ label: '7', type: 'digit' }, { label: '8', type: 'digit' }, { label: '9', type: 'digit' }],
+  [{ label: '4', type: 'digit' }, { label: '5', type: 'digit' }, { label: '6', type: 'digit' }],
+  [{ label: '1', type: 'digit' }, { label: '2', type: 'digit' }, { label: '3', type: 'digit' }],
+  [{ label: '.', type: 'dot' },   { label: '0', type: 'digit' }, { label: 'back', type: 'back' }],
 ];
 
 const useStyles = makeStyles((theme) => ({
@@ -216,9 +234,11 @@ const useStyles = makeStyles((theme) => ({
     marginBottom: 8, gap: 8,
   },
 
-  // ---- AmountKeypad ----
-  keypad: { paddingHorizontal: 10 },
-  keyrow: { flexDirection: 'row', justifyContent: 'space-around' },
+  // ---- AmountKeypad（图2：左数字区 + 右功能列）----
+  keypad: { flexDirection: 'row', paddingHorizontal: 6 },
+  padLeft: { flex: 3 },
+  padRight: { flex: 1 },
+  keyrow: { flexDirection: 'row' },
   key: {
     flex: 1,
     height: 48,
@@ -232,8 +252,11 @@ const useStyles = makeStyles((theme) => ({
       android: { elevation: 1 },
     }),
   },
+  // 「保存并继续」跨 2 行：2×key高 + 2×margin
+  keySpan2: { height: 48 * 2 + 8, flex: 0 },
   keyText: { fontSize: 20, color: theme.text900, fontWeight: '600' },
-  keyIconText: { fontSize: 17, color: theme.text700, fontWeight: '600' },
+  dateKeyText: { fontSize: 11, color: theme.text700, fontWeight: '600', marginTop: 1 },
+  saveNextText: { fontSize: 13, fontWeight: '800', textAlign: 'center', lineHeight: 18 },
   confirmKey: {
     padding: 0,
     backgroundColor: 'transparent',

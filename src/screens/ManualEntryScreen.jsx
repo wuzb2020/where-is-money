@@ -23,20 +23,21 @@ import * as Haptic from '../core/utils/haptics';
 import { dayjs, dayStart } from '../core/utils/date';
 
 /**
- * 手动记账表单（全屏 Modal）—— 鲨鱼记账式单屏布局
- * 固定区（任何屏幕零滚动）+ 弹性分类宫格区（内容超高时仅宫格内滚动）：
- * ┌ ✕  记一笔          📅 今天▾ ┐  日期收进标题栏
- * │ [💸 支出 | 💰 收入]           │
- * │ 🍜外卖 🛒网购 🚗交通 🏠房租   │  宫格 4 列，flex:1 弹性
- * │ 🍽餐饮 👕购物 ⋯更多          │
- * │ 💬 添加备注…        📷 0/3   │  备注 + 图片入口一行
- * │ ¥ 38.50          先输入金额  │  金额大字 + 就绪提示
- * │ [¥10][¥20][¥50][¥100][¥500]  │
- * │  1   2   3   ⌫              │
- * │  4   5   6  清空             │  键盘贴底：✓保存 / + 继续
- * │  7   8   9   +              │
- * │  .   0  00  ✓保存           │
- * └─────────────────────────────┘
+ * 手动记账表单（全屏 Modal）—— 鲨鱼记账式两阶段交互
+ * 阶段一（未选分类，对应图1）：头部 + 收支切换 + 全量分类宫格（可下滑）
+ * 阶段二（选中分类，对应图2）：宫格收缩到上部 + 金额大字 + 备注行 + 数字键盘
+ * ┌ ✕  记一笔                    ┐
+ * │ [💸 支出 | 💰 收入]            │
+ * │ 🍜外卖 🛒网购 🚗交通 🏠房租    │  宫格全量 4 列，flex:1 弹性可滚
+ * │ 🍽餐饮 👕购物 ⚕医疗 🎮娱乐    │
+ * │ ── 选中分类后出现 ──          │
+ * │ ¥ 38.50          先输入金额   │  金额大字 + 就绪提示
+ * │ 💬 添加备注…         📷 0/3  │  行内备注 + 图片入口
+ * │  7   8   9 │ 📅今天          │
+ * │  4   5   6 │ 保存并继续       │  键盘贴底（图2布局）
+ * │  1   2   3 │ （跨2行）        │
+ * │  .   0   ⌫ │ 完成            │
+ * └──────────────────────────────┘
  */
 export default function ManualEntryScreen({ navigation, route }) {
   const { theme, insets } = useAppTheme();
@@ -46,7 +47,6 @@ export default function ManualEntryScreen({ navigation, route }) {
   const initial = route.params?.draft || {};
   const editId = route.params?.editId;
 
-  const recentIds = useThemeStore((s) => s.recentCategoryIds);
   const useCategory = useThemeStore((s) => s.useCategory);
   const expenseCats = useCategoryStore((s) => s.expenseCategories());
   const incomeCats  = useCategoryStore((s) => s.incomeCategories());
@@ -56,7 +56,7 @@ export default function ManualEntryScreen({ navigation, route }) {
 
   const [type, setType] = React.useState(initial.type || 'expense');
   const [amountFen, setAmountFen] = React.useState(initial.amount || 0);
-  const [categoryId, setCategoryId] = React.useState(null);
+  const [categoryId, setCategoryId] = React.useState(null); // 阶段二开关：null 表示未选分类
   const [dateTs, setDateTs] = React.useState(dayStart(initial.date || Date.now()));
   const [desc, setDesc] = React.useState(initial.description || '');
   const [images, setImages] = React.useState(initial.imagePaths || []);
@@ -97,17 +97,8 @@ export default function ManualEntryScreen({ navigation, route }) {
     return () => { cancelled = true; };
   }, [editId]);
 
-  // 当 type 变了或分类列表来了 → 智能选默认分类（最近使用优先）
-  React.useEffect(() => {
-    if (categoryId) return;
-    const pool = type === 'expense' ? expenseCats : incomeCats;
-    if (pool.length === 0) return;
-    const recent = recentIds
-      .map((id) => pool.find((c) => c.id === id))
-      .filter(Boolean);
-    const cat = recent[0] || pool[0];
-    if (cat) setCategoryId(cat.id);
-  }, [type, categories.length, recentIds.join(',')]);
+  // 阶段一（图1）：不再自动预选分类——必须用户手动点选后才进入阶段二（弹出键盘）
+  // 编辑模式由上方 editId 回填 effect 直接带入 categoryId，跳过阶段一
 
   const selectedCat = React.useMemo(() => {
     const pool = type === 'expense' ? expenseCats : incomeCats;
@@ -156,7 +147,7 @@ export default function ManualEntryScreen({ navigation, route }) {
     }
   };
 
-  // "+" 键：追加模式，保存本条不清空，继续下一条
+  // 「保存并继续」：保存本条，清空金额+备注+图片，类型与分类保持选中（连续记同场景多笔）
   const doAddNext = async () => {
     if (!canSave) return;
     // 编辑模式下没有"追加"语义，直接忽略，避免误新建重复记录
@@ -169,11 +160,10 @@ export default function ManualEntryScreen({ navigation, route }) {
         date: dayStart(dateTs), type, categoryId, amount: amountFen,
         description: desc.trim(), source: 'manual', imagePaths: images,
       });
-      // 不清空分类和类型，只清金额+描述
+      // 只清金额+备注+图片；分类/类型/日期保持原选中状态
       setAmountFen(0);
       setDesc('');
       setImages([]);
-      setDateTs(dayStart());
       Toast.show({ type: 'success', message: `已记账，继续写下一条～` });
     } finally {
       setLoading(false);
@@ -217,7 +207,7 @@ export default function ManualEntryScreen({ navigation, route }) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
-        {/* 头部：✕ | 标题 | 日期按钮（鲨鱼记账式收进标题栏） */}
+        {/* 头部：✕ | 标题（日期键已收进数字键盘，图2布局） */}
         <View style={[styles.header, { borderBottomColor: theme.divider }]}>
           <TouchableOpacity activeOpacity={0.7} style={styles.closeBtn} onPress={onClosePress} hitSlop={8}>
             <MaterialCommunityIcons name="close" size={22} color={theme.text900} />
@@ -225,14 +215,7 @@ export default function ManualEntryScreen({ navigation, route }) {
           <Text style={cx(styles.title, { color: theme.text900 })} numberOfLines={1}>
             {editId ? '编辑记录' : '记一笔'}
           </Text>
-          <PressableScale
-            style={[styles.dateBtn, { backgroundColor: theme.primaryBg }]}
-            onPress={() => setDatePickerVisible(true)}
-          >
-            <MaterialCommunityIcons name="calendar-outline" size={14} color={theme.primary} />
-            <Text style={[styles.dateBtnText, { color: theme.primary }]}>{datePillLabel(dateTs)}</Text>
-            <MaterialCommunityIcons name="chevron-down" size={14} color={theme.primary} />
-          </PressableScale>
+          <View style={styles.closeBtn} />
         </View>
 
         {/* 收入/支出 切换 */}
@@ -248,7 +231,7 @@ export default function ManualEntryScreen({ navigation, route }) {
           />
         </View>
 
-        {/* 常用分类宫格：弹性区（富余空间给更多行；超高时仅此区内部滚动） */}
+        {/* 阶段一（图1）：全量分类宫格，弹性区可下滑；选中分类后进入阶段二 */}
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: 8 }}
@@ -263,77 +246,85 @@ export default function ManualEntryScreen({ navigation, route }) {
           />
         </ScrollView>
 
-        {/* 备注行：备注入口（左） + 图片入口（右），点击备注原地进入行内编辑（不弹层） */}
-        <View style={[styles.noteRow, { borderTopColor: theme.divider, backgroundColor: theme.bgPage }]}>
-          {noteEditing ? (
-            <TextInput
-              value={desc}
-              onChangeText={setDesc}
-              autoFocus
-              onBlur={() => setNoteEditing(false)}
-              onSubmitEditing={() => setNoteEditing(false)}
-              returnKeyType="done"
-              maxLength={200}
-              style={[styles.noteInput, { color: theme.text900 }]}
+        {/* 阶段二（图2）：选中分类后弹出 金额 + 备注 + 键盘 */}
+        {categoryId ? (
+          <>
+            {/* 金额大字 + 就绪提示 */}
+            <AmountDisplay
+              valueFen={amountFen}
+              hint={saveHint}
+              onChangeFen={(fen) => setAmountFen(fen)}
+              showQuick={false}
             />
-          ) : (
-            <PressableScale style={styles.notePress} onPress={() => setNoteEditing(true)}>
-              {/* 图标仅跟随内容状态，编辑/展示态保持一致 */}
-              <MaterialCommunityIcons
-                name={desc.trim() ? 'text-long' : 'tooltip-outline'}
-                size={16}
-                color={desc.trim() ? theme.primary : theme.text500}
-              />
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.noteText,
-                  { color: desc.trim() ? theme.text900 : theme.text500 },
-                  desc.trim() && { fontWeight: '700' },
-                ]}
+
+            {/* 备注行：点击原地行内编辑（不弹层） + 图片入口 */}
+            <View style={[styles.noteRow, { borderTopColor: theme.divider, backgroundColor: theme.bgPage }]}>
+              {noteEditing ? (
+                <TextInput
+                  value={desc}
+                  onChangeText={setDesc}
+                  autoFocus
+                  onBlur={() => setNoteEditing(false)}
+                  onSubmitEditing={() => setNoteEditing(false)}
+                  returnKeyType="done"
+                  maxLength={200}
+                  style={[styles.noteInput, { color: theme.text900 }]}
+                />
+              ) : (
+                <PressableScale style={styles.notePress} onPress={() => setNoteEditing(true)}>
+                  {/* 图标仅跟随内容状态，编辑/展示态保持一致 */}
+                  <MaterialCommunityIcons
+                    name={desc.trim() ? 'text-long' : 'tooltip-outline'}
+                    size={16}
+                    color={desc.trim() ? theme.primary : theme.text500}
+                  />
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.noteText,
+                      { color: desc.trim() ? theme.text900 : theme.text500 },
+                      desc.trim() && { fontWeight: '700' },
+                    ]}
+                  >
+                    {desc.trim() ? desc.trim() : '添加备注…'}
+                  </Text>
+                </PressableScale>
+              )}
+              <PressableScale
+                style={[styles.imgEntry, { backgroundColor: images.length ? theme.primaryBg : theme.bgCard }]}
+                onPress={() => setImageSheetVisible(true)}
               >
-                {desc.trim() ? desc.trim() : '添加备注…'}
-              </Text>
-            </PressableScale>
-          )}
-          <PressableScale
-            style={[styles.imgEntry, { backgroundColor: images.length ? theme.primaryBg : theme.bgCard }]}
-            onPress={() => setImageSheetVisible(true)}
-          >
-            <MaterialCommunityIcons
-              name={images.length ? 'image-multiple-outline' : 'image-plus'}
-              size={16}
-              color={images.length ? theme.primary : theme.text500}
-            />
-            <Text
-              style={[
-                styles.imgEntryText,
-                { color: images.length ? theme.primary : theme.text500 },
-              ]}
-            >
-              {images.length ? `${images.length}/3` : '图片'}
-            </Text>
-          </PressableScale>
-        </View>
+                <MaterialCommunityIcons
+                  name={images.length ? 'image-multiple-outline' : 'image-plus'}
+                  size={16}
+                  color={images.length ? theme.primary : theme.text500}
+                />
+                <Text
+                  style={[
+                    styles.imgEntryText,
+                    { color: images.length ? theme.primary : theme.text500 },
+                  ]}
+                >
+                  {images.length ? `${images.length}/3` : '图片'}
+                </Text>
+              </PressableScale>
+            </View>
 
-        {/* 金额大字 + 快捷金额 */}
-        <AmountDisplay
-          valueFen={amountFen}
-          hint={saveHint}
-          onChangeFen={(fen) => setAmountFen(fen)}
-        />
-
-        {/* 数字键盘贴底：✓保存 / + 保存并继续 */}
-        <View style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
-          <AmountKeypad
-            valueFen={amountFen}
-            onChangeFen={(fen) => setAmountFen(fen)}
-            onAdd={doAddNext}
-            onConfirm={() => doSave(true)}
-            showAdd
-            confirmDisabled={!canSave || loading}
-          />
-        </View>
+            {/* 数字键盘贴底（图2）：左数字区 + 右列 今天/保存并继续/完成 */}
+            <View style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
+              <AmountKeypad
+                valueFen={amountFen}
+                onChangeFen={(fen) => setAmountFen(fen)}
+                dateLabel={datePillLabel(dateTs)}
+                onDate={() => setDatePickerVisible(true)}
+                onSaveNext={doAddNext}
+                saveNextDisabled={!canSave || loading || !!editId}
+                onConfirm={() => doSave(true)}
+                confirmDisabled={!canSave || loading}
+              />
+            </View>
+          </>
+        ) : null}
       </KeyboardAvoidingView>
 
       {/* 附加图片 Sheet */}
@@ -428,13 +419,6 @@ const useStyles = makeStyles((theme) => ({
   },
   closeBtn: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   title:    { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700' },
-  dateBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 8, height: 28,
-    borderRadius: theme.radius.full, gap: 2,
-    marginRight: 8,
-  },
-  dateBtnText: { fontSize: 12, fontWeight: '700' },
 
   // 备注行
   noteRow: {
