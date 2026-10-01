@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, KeyboardAvoidingView,
-  Platform, ScrollView, Image,
+  Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import SegmentedControl from '../ui/primitives/SegmentedControl';
 import PressableScale from '../ui/primitives/PressableScale';
 import BottomSheet from '../ui/primitives/BottomSheet';
 import { AmountDisplay, AmountKeypad } from '../ui/primitives/AmountInput';
+import SmartImage from '../ui/primitives/SmartImage';
 import CategoryPickerSheet from '../ui/components/CategoryPickerSheet';
 import CategoryQuickGrid from '../ui/components/CategoryQuickGrid';
 import DatePickerSheet from '../ui/components/DatePickerSheet';
@@ -333,7 +334,7 @@ export default function ManualEntryScreen({ navigation, route }) {
           {images.map((u, i) => (
             <View key={i} style={{ position: 'relative' }}>
               <View style={{ width: 88, height: 88, borderRadius: 12, overflow: 'hidden', backgroundColor: theme.divider }}>
-                <Image source={{ uri: u }} style={{ width: '100%', height: '100%' }} />
+                <SmartImage source={{ uri: u }} style={{ width: '100%', height: '100%' }} />
               </View>
               <PressableScale
                 hitSlop={8}

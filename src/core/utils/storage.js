@@ -1,6 +1,7 @@
 // 简单图片指纹（防止同一张图重复 OCR）+ 路径常量
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
+import * as blobStore from './blobStore';
 
 // 【修改】web 端 expo-file-system 的 documentDirectory/cacheDirectory 为 null，
 // 直接拼路径会得到 "nulltransaction_images/" 垃圾路径；web 端文件操作本就不可用，用占位即可
@@ -59,9 +60,13 @@ export async function computeImageFingerprint(uri) {
   }
 }
 
-/** 把临时 URI 拷贝到持久目录 */
+/**
+ * 把临时图片转为持久化
+ * - Web：data/blob URI 外置到 IndexedDB，返回 idb:// 引用（防止大图 base64 撑爆 localStorage）
+ * - 原生：拷贝到 documentDirectory/transaction_images
+ */
 export async function persistImageToLocal(tempUri, txId) {
-  if (IS_WEB) return tempUri; // 【修改】web 端 blob/data URI 直接可用，无需拷贝
+  if (IS_WEB) return blobStore.externalizeImage(tempUri);
   await ensureDirs();
   const ext = (tempUri.split('.').pop() || 'jpg').split('?')[0];
   const safeExt = ['jpg', 'jpeg', 'png', 'heic', 'webp'].includes(ext.toLowerCase()) ? ext.toLowerCase() : 'jpg';

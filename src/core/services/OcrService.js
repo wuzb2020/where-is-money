@@ -29,6 +29,7 @@ import MlKitTextRecognition from '@react-native-ml-kit/text-recognition';
 import * as tesseractEngine from './TesseractEngine';
 import TransactionEntry, { TX_SOURCE } from '../entities/TransactionEntry';
 import { dayStart } from '../utils/date';
+import { persistImageToLocal } from '../utils/storage';
 
 /**
  * 图片指纹：用于 OCR 缓存去重。
@@ -37,7 +38,7 @@ import { dayStart } from '../utils/date';
  * - 原生端：文件大小 + URI 尾部
  * 前缀 CACHE_VERSION：识别/解析策略升级后旧缓存（可能含错误结果）自动失效。
  */
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 
 async function computeImageFingerprint(uri) {
   if (Platform.OS === 'web') {
@@ -167,11 +168,12 @@ async function webTesseractRecognize(imageUri) {
   if (!tesseractEngine.isTesseractAvailable()) {
     throw new Error('浏览器不支持 Tesseract 文字识别引擎');
   }
-  const text = await tesseractEngine.recognize(imageUri);
+  const { texts, text } = await tesseractEngine.recognize(imageUri);
   if (!text || !text.trim()) {
     throw new Error('未从图片中识别到文字，请换一张更清晰的图片');
   }
-  return text;
+  // texts：各策略独立文本（金额投票用）；text：合并文本（其他字段用）
+  return { texts, text };
 }
 
 // ===================== 主流程 =====================
@@ -196,12 +198,36 @@ export async function recognizeAndParse(imageUri) {
   const safeUri = await prepareImageForOcr(imageUri);
 
   // 3. 识别文字：Web 用 Tesseract.js（多策略真实识别）/ 原生用 ML Kit；失败抛错
-  const rawText = Platform.OS === 'web'
-    ? await webTesseractRecognize(safeUri)
-    : await realMlKitRecognize(safeUri);
+  let rawText;
+  let strategyTexts = null;
+  if (Platform.OS === 'web') {
+    const r = await webTesseractRecognize(safeUri);
+    rawText = r.text;
+    strategyTexts = r.texts;
+  } else {
+    rawText = await realMlKitRecognize(safeUri);
+  }
 
   // 4. 解析：金额 / 日期 / 类型 / 分类
-  const amounts = await amountExtractor.extractAllAmounts(rawText);
+  // 金额：web 多策略各自提取后跨策略投票，剔除「丢小数点」噪声（17.05 → 1705）；
+  // 原生单文本走原路径（投票函数单策略时原样返回）
+  let amounts;
+  if (strategyTexts && strategyTexts.length > 0) {
+    const perStrategy = [];
+    for (const t of strategyTexts) {
+      perStrategy.push(await amountExtractor.extractAllAmounts(t));
+    }
+    amounts = amountExtractor.mergeAmountsByVote(perStrategy);
+  } else {
+    amounts = await amountExtractor.extractAllAmounts(rawText);
+  }
+
+  // 凭证图片引用化：web 端把大图 dataURI 外置到 IndexedDB，实体只存 idb:// 引用
+  // （OCR 缓存随之只存引用，不撑 localStorage）；原生端保持原图 URI（入库时 store 层拷贝）
+  const imageRef = Platform.OS === 'web'
+    ? await persistImageToLocal(imageUri, `ocr_${hash.slice(-16)}`)
+    : imageUri;
+
   // 记账日期只精确到天：识别出的时间部分（时分）统一丢弃；缺日期时取今天
   const txDate = dayStart((await dateExtractor.extractBestDate(rawText)) || Date.now());
   const type = await categoryMatcher.classifyType(rawText);
@@ -222,7 +248,7 @@ export async function recognizeAndParse(imageUri) {
       amount: 0,
       description: await descriptionComposer.composeDescription(rawText, 0, matched.categoryName || '', null),
       source: TX_SOURCE.IMAGE,
-      imagePaths: [imageUri],
+      imagePaths: [imageRef],
       categoryName: matched.categoryName || '',
     })];
   } else {
@@ -237,7 +263,7 @@ export async function recognizeAndParse(imageUri) {
         amount: amt.value,
         description: desc,
         source: TX_SOURCE.IMAGE,
-        imagePaths: [imageUri],
+        imagePaths: [imageRef],
         categoryName: matched.categoryName || '',
       }));
     }

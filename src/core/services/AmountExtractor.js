@@ -147,3 +147,71 @@ export async function extractPrimaryAmount(text) {
   // 取最大
   return all.reduce((max, cur) => (cur.value > max.value ? cur : max));
 }
+
+/**
+ * 判定整数候选 intRaw 是否为小数候选 decimalRaw「丢失小数点」后的噪声：
+ * "17.05" 去标点 → "1705" === intRaw（多策略拼接文本中 1705 假金额的典型来源）
+ */
+export function isDecimalDroppedNoise(decimalRaw, intRaw) {
+  if (!decimalRaw || !/\./.test(decimalRaw)) return false;
+  const compact = String(decimalRaw).replace(/[.,\s]/g, '');
+  return compact === String(intRaw).trim();
+}
+
+/**
+ * 跨识别策略的金额投票合并（解决多策略文本各自提取时的噪声金额）
+ * @param {Array<Array<{value:number, raw:string}>>} perStrategy 每个策略文本抽取出的候选（按策略顺序）
+ * @returns {Array<{value:number, raw:string}>}
+ *
+ * 规则：
+ *  1) 同金额值聚类；整数候选若与某小数候选构成「丢小数点」关系，并入小数簇（代表取小数）
+ *  2) 簇票数 = 覆盖的策略数；有候选得 2 票以上时，票数>=2 的簇胜出
+ *     （独立的一票簇予以保留，避免丢掉同图的其他真实金额；噪声因已并入高票簇被代表替换）
+ *  3) 所有簇都只有一票（策略间互不重合）→ 退回第一个策略的候选
+ *  4) 单策略输入 → 原样返回
+ */
+export function mergeAmountsByVote(perStrategy) {
+  const groups = perStrategy;
+  if (!groups || groups.length === 0) return [];
+  if (groups.length === 1) return groups[0] ? [...groups[0]] : [];
+
+  // 簇：{ rep:{value,raw}, votes:Set<strategyIdx>, isDecimal:boolean }
+  const clusters = [];
+
+  const findCluster = (cand, strategyIdx) => {
+    for (const cl of clusters) {
+      if (cl.rep.value === cand.value) return cl;
+      // 整数候选 → 已有的小数簇（丢小数点噪声）
+      if (!cand.raw.includes('.') && cl.rep.raw.includes('.')
+        && isDecimalDroppedNoise(cl.rep.raw, cand.raw)) {
+        return cl;
+      }
+      // 小数候选 → 已有的整数簇：小数更可信，替换代表并升级为小数簇
+      if (cand.raw.includes('.') && !cl.rep.raw.includes('.')
+        && isDecimalDroppedNoise(cand.raw, cl.rep.raw)) {
+        cl.rep = cand;
+        return cl;
+      }
+    }
+    return null;
+  };
+
+  groups.forEach((cands, sIdx) => {
+    for (const cand of (cands || [])) {
+      let cl = findCluster(cand, sIdx);
+      if (!cl) {
+        cl = { rep: cand, votes: new Set() };
+        clusters.push(cl);
+      }
+      cl.votes.add(sIdx);
+    }
+  });
+
+  const maxVotes = Math.max(...clusters.map((cl) => cl.votes.size));
+  if (maxVotes < 2) {
+    // 策略间无共识：信任第一个策略的结果
+    return groups[0] ? [...groups[0]] : [];
+  }
+  // 高票簇 + 低票簇全部保留：低票簇若是高票簇的丢小数点噪声，聚类阶段已被并入不会独立存在
+  return clusters.map((cl) => cl.rep);
+}

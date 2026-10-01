@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, Alert, Image, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, ScrollView, Alert, TouchableOpacity, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppTheme, makeStyles, cx } from '../ui/themeHelper';
@@ -12,6 +12,7 @@ import CategoryPickerSheet from '../ui/components/CategoryPickerSheet';
 import DatePickerSheet from '../ui/components/DatePickerSheet';
 import ImageViewer from '../ui/components/ImageViewer';
 import AnimatedNumber from '../ui/primitives/AnimatedNumber';
+import SmartImage from '../ui/primitives/SmartImage';
 import Toast from '../ui/primitives/Toast';
 import { useTransactionStore } from '../store/useTransactionStore';
 import { useCategoryStore } from '../store/useCategoryStore';
@@ -212,7 +213,7 @@ export default function TransactionDetailScreen({ navigation, route }) {
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                   {tx.imagePaths.map((u, i) => (
                     <TouchableOpacity activeOpacity={0.8} key={i} onPress={() => setImgViewer(u)}>
-                      <Image source={{ uri: u }} style={styles.imgThumb} />
+                      <SmartImage source={{ uri: u }} style={styles.imgThumb} />
                     </TouchableOpacity>
                   ))}
                 </View>

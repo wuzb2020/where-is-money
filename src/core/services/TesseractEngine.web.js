@@ -88,9 +88,11 @@ const STRATEGIES = [
 ];
 
 /**
- * 识别图片中的文字（多尺度 + 多分页模式，合并真实结果）
+ * 识别图片中的文字（多尺度 + 多分页模式，真实识别）
  * @param {string} imageUri data URI / blob URL
- * @returns {Promise<string>}
+ * @returns {Promise<{ texts: string[], text: string }>}
+ *  - texts：每个策略的独立文本（供金额跨策略投票，避免某策略丢小数点产生 1705 假金额）
+ *  - text：合并文本（日期/分类/描述等字段解析仍走它）
  */
 export async function recognize(imageUri) {
   const worker = await getWorker();
@@ -119,7 +121,7 @@ export async function recognize(imageUri) {
   if (texts.length === 0) {
     throw lastError || new Error('图片文字识别失败，请检查网络后重试（首次运行需下载语言包）');
   }
-  return texts.join('\n\n');
+  return { texts, text: texts.join('\n\n') };
 }
 
 export function isTesseractAvailable() {

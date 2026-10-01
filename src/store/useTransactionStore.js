@@ -42,7 +42,20 @@ export const useTransactionStore = create((set, get) => ({
   },
 
   async bulkCreate(txs) {
-    return TransactionDao.bulkCreate(txs);
+    // 与 create 对齐：图片先持久化（web 外置 IndexedDB / 原生拷贝文件），
+    // 否则 OCR 批量保存会把大图 base64 直接写库导致配额超限
+    const persisted = [];
+    for (const tx of txs) {
+      const imagePaths = [];
+      if (tx.imagePaths && tx.imagePaths.length) {
+        const idStub = Math.random().toString(36).slice(2, 10);
+        for (let i = 0; i < tx.imagePaths.length; i++) {
+          imagePaths.push(await persistImageToLocal(tx.imagePaths[i], idStub));
+        }
+      }
+      persisted.push({ ...tx, imagePaths });
+    }
+    return TransactionDao.bulkCreate(persisted);
   },
 
   async update(id, patch) {

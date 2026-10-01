@@ -4,6 +4,7 @@
 
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../constants/categories';
 import { categoryColors } from '../constants/theme';
+import * as blobStore from '../utils/blobStore';
 
 const LS_KEYS = {
   categories: 'qqn_db_categories',
@@ -23,7 +24,16 @@ function read(key, fallback) {
   }
 }
 function write(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    // QuotaExceededError：localStorage 配额（约 5MB/域名）已满。
+    // 图片已走 IndexedDB 外置；仍触发说明历史数据/其他大字段占满，给出可操作提示而非裸异常
+    if (e?.name === 'QuotaExceededError' || e?.code === 22) {
+      throw new Error('浏览器本地存储空间已满，请在「设置」清理历史记录，或改用手机 App 记账');
+    }
+    throw e;
+  }
 }
 function nextId() {
   const seq = read(LS_KEYS.seq, { categories: 0, transactions: 0, ocr: 0, tpl: 0 });
@@ -38,8 +48,43 @@ function bumpId(kind) {
 
 let _ready = false;
 
+const MIGRATION_KEY = 'qqn_migration';
+const MIGRATION_BLOB_V1 = 'blob-v1';
+
+/**
+ * 一次性迁移：旧版本把图片 base64 dataURI 直接存进 localStorage（交易记录 + OCR 缓存），
+ * 是配额超限的根源。这里：
+ *  - 交易记录的内联图片外置到 IndexedDB，替换为 idb:// 引用（记录与凭证都保留）
+ *  - OCR 缓存整包清空（可再生临时数据，且旧缓存含 1705 等错误金额）
+ */
+async function migrateInlineImages() {
+  const done = read(MIGRATION_KEY, null);
+  if (done === MIGRATION_BLOB_V1) return;
+  try {
+    const txs = read(LS_KEYS.transactions, []);
+    let changed = false;
+    for (const t of txs) {
+      if (Array.isArray(t.imagePaths) && t.imagePaths.length) {
+        const next = [];
+        for (const p of t.imagePaths) {
+          next.push(await blobStore.externalizeImage(p));
+        }
+        t.imagePaths = next;
+        changed = true;
+      }
+    }
+    if (changed) write(LS_KEYS.transactions, txs);
+    // 旧 OCR 缓存直接清空
+    localStorage.removeItem(LS_KEYS.ocrCache);
+  } catch (e) {
+    console.warn('[migration] blob 迁移失败：', e?.message);
+  }
+  write(MIGRATION_KEY, MIGRATION_BLOB_V1);
+}
+
 export async function getDB() {
   if (_ready) return { web: true };
+  await migrateInlineImages();
   // seed 默认分类
   const cats = read(LS_KEYS.categories, []);
   if (cats.length === 0) {

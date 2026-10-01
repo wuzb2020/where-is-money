@@ -12,11 +12,24 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as blobStore from '../../core/utils/blobStore';
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
 export default function ImageViewer({ uri, onClose }) {
   const insets = useSafeAreaInsets();
+
+  // idb:// 引用先 resolve 成可渲染 URI（普通 URI 透传）
+  const [resolvedUri, setResolvedUri] = React.useState(uri);
+  React.useEffect(() => {
+    let alive = true;
+    if (uri) {
+      blobStore.resolveImage(uri).then((u) => { if (alive) setResolvedUri(u); });
+    } else {
+      setResolvedUri(null);
+    }
+    return () => { alive = false; };
+  }, [uri]);
 
   const scale = useSharedValue(1);
   const baseScale = useSharedValue(1);
@@ -108,7 +121,7 @@ export default function ImageViewer({ uri, onClose }) {
       <GestureDetector gesture={composed}>
         <Animated.View style={styles.container}>
           <Animated.Image
-            source={{ uri }}
+            source={{ uri: resolvedUri }}
             style={[styles.img, imgStyle]}
             resizeMode="contain"
             entering={FadeIn.duration(180)}
