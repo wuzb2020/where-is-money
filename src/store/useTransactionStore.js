@@ -4,17 +4,17 @@ import { TransactionDao } from '../core/db';
 import { persistImageToLocal } from '../core/utils/storage';
 
 export const useTransactionStore = create((set, get) => ({
-  // 查询状态（全部记录页用）
+  // 查询状态（全部记录页用）；默认按录入时间倒序、记账日期次级倒序
   filter: {
     keyword: '',
     type: 'all',       // all / income / expense
     categoryId: null,
-    sortBy: 'date',
+    sortBy: 'created_at',
     sortOrder: 'DESC',
   },
   setFilter: (patch) => set((s) => ({ filter: { ...s.filter, ...patch } })),
   resetFilter: () => set({
-    filter: { keyword: '', type: 'all', categoryId: null, sortBy: 'date', sortOrder: 'DESC' },
+    filter: { keyword: '', type: 'all', categoryId: null, sortBy: 'created_at', sortOrder: 'DESC' },
   }),
 
   // 查询交易列表（DB 直查，不缓存 list 以免内存太大）

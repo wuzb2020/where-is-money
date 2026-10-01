@@ -300,10 +300,13 @@ export const TransactionDao = {
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     // 【修改】排序字段/方向白名单 + limit/offset 数值化，杜绝 SQL 注入与非法标识符
+    // created_at（录入时间）为首要排序时，date（记账日期）作次级——同批补录的旧日期单据按日期倒序
     const SORT_COLS = { date: 't.date', amount: 't.amount', created_at: 't.created_at' };
     const orderCol = SORT_COLS[sortBy] || 't.date';
     const orderDir = String(sortOrder).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-    const orderSql = `ORDER BY ${orderCol} ${orderDir}, t.id DESC`;
+    const orderSql = sortBy === 'created_at'
+      ? `ORDER BY t.created_at ${orderDir}, t.date ${orderDir}, t.id DESC`
+      : `ORDER BY ${orderCol} ${orderDir}, t.id DESC`;
     const limitN = Number(limit);
     const offsetN = Number(offset);
     let limitSql = '';

@@ -225,10 +225,19 @@ export const TransactionDao = {
         (t.categoryName || '').toLowerCase().includes(kw));
     }
     // 【修改】排序字段/方向白名单，与原生 DAO 对齐
+    // created_at（录入时间）为首要排序时，date（记账日期）作次级，再按 id 兜底——与原生端一致
     const SORT_COLS = { date: 'date', amount: 'amount', created_at: 'createdAt' };
     const col = SORT_COLS[sortBy] || 'date';
     const dir = String(sortOrder).toUpperCase() === 'ASC' ? 1 : -1;
-    list.sort((a, b) => (a[col] > b[col] ? dir : a[col] < b[col] ? -dir : (b.id - a.id) * dir));
+    list.sort((a, b) => {
+      if (a[col] > b[col]) return dir;
+      if (a[col] < b[col]) return -dir;
+      if (col === 'createdAt') {
+        if (a.date > b.date) return dir;
+        if (a.date < b.date) return -dir;
+      }
+      return (b.id - a.id) * dir;
+    });
     // 【修改】支持 offset 分页（旧代码吞掉 offset，两端分页行为不一致）
     const offsetN = Number(offset);
     const startIdx = Number.isFinite(offsetN) && offsetN > 0 ? Math.floor(offsetN) : 0;

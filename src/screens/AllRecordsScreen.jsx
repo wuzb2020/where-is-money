@@ -193,6 +193,8 @@ export default function AllRecordsScreen({ navigation, route }) {
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', gap: 6 }}>
+          <Chip size="sm" label="按录入" variant={filter.sortBy === 'created_at' ? 'primary' : 'outline'}
+            onPress={() => setFilter({ sortBy: 'created_at' })} />
           <Chip size="sm" label="按日期" variant={filter.sortBy === 'date' ? 'primary' : 'outline'}
             onPress={() => setFilter({ sortBy: 'date' })} />
           <Chip size="sm" label="按金额" variant={filter.sortBy === 'amount' ? 'primary' : 'outline'}

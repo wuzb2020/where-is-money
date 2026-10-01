@@ -84,7 +84,7 @@ export default function HomeScreen({ navigation }) {
       // 【修改 P1】列表独立查询：dashboard.recent 固定只有 5 条，旧 loadMore 改 page 也拿不到更多
       const list = await useTransactionStore.getState().query({
         start: range.start, end: range.end,
-        limit: 5, sortBy: 'date', sortOrder: 'DESC',
+        limit: 5, sortBy: 'created_at', sortOrder: 'DESC',
       });
       setRecentList(list);
       setHasMore(list.length >= 5);
@@ -158,7 +158,7 @@ export default function HomeScreen({ navigation }) {
       const next = page + 1;
       const list = await useTransactionStore.getState().query({
         start: range.start, end: range.end,
-        limit: 5 + next * PAGE, sortBy: 'date', sortOrder: 'DESC',
+        limit: 5 + next * PAGE, sortBy: 'created_at', sortOrder: 'DESC',
       });
       if (list.length > recentList.length) {
         setRecentList(list);
