@@ -1,99 +1,47 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Platform } from 'react-native'; // 【修改】Platform 改为顶部静态 import
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { useAppTheme, makeStyles, cx } from '../themeHelper';
 import Chip from './Chip';
 import * as Haptic from '../../core/utils/haptics';
 import { QUICK_AMOUNTS } from '../../core/constants/categories';
-import { sanitizeAmountInput, formatAmountPlain, yuanToFen } from '../../core/utils/amount';
+import { sanitizeAmountInput, yuanToFen } from '../../core/utils/amount';
 
 /**
- * 大金额输入器（自带数字键盘 + 快捷金额）
- * 这是手动记账表单的核心组件
+ * 大金额输入器（鲨鱼记账式拆分导出）
+ * - AmountDisplay：金额大字显示 + 提示 + 快捷金额 Chip（无输入逻辑）
+ * - AmountKeypad：数字键盘（内部缓存输入串，与外部 valueFen 双向同步）
+ * - default AmountInput：两者竖排组合（旧用法兼容）
  *
  * valueFen: number (分)
  * onChangeFen: (fen: number, yuanStr: string) => void
- * onAdd: () => void  // "+" 按钮：保存并追加下一条
- * onConfirm: () => void
- * showAdd?: boolean
- * confirmDisabled?: boolean   // ✓ 键置灰（金额未输/分类未选时）
- * middle?: ReactNode          // 插槽：渲染在快捷金额与键盘之间（pill 行等），
- *                             // 配合 containerStyle={{flex:1}} 时键盘贴底
- * containerStyle?: style
  */
-export default function AmountInput({
+
+// fen → 逗号分隔整数位 + 两位小数位
+function fenToParts(fen) {
+  const [int, dec] = (fen / 100).toFixed(2).split('.');
+  return [int.replace(/\B(?=(\d{3})+(?!\d))/g, ','), dec];
+}
+
+export function AmountDisplay({
   valueFen = 0,
+  hint,            // 金额未就绪提示（如"先输入金额"），null 则不显示
   onChangeFen,
-  onAdd,
-  onConfirm,
-  showAdd = false,
-  confirmDisabled = false,
-  middle,
-  containerStyle,
+  style,
 }) {
   const { theme } = useAppTheme();
   const styles = useStyles();
-  const [yuanStr, setYuanStr] = React.useState(() =>
-    valueFen ? formatAmountPlain(valueFen) : '',
-  );
-
-  // 外部 valueFen 变化（比如快捷金额点击后外部传新值）
-  React.useEffect(() => {
-    const current = yuanToFen(parseFloat(yuanStr || '0'));
-    if (current !== valueFen) {
-      setYuanStr(valueFen ? formatAmountPlain(valueFen) : '');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [valueFen]);
-
-  const press = async (text, type) => {
-    await Haptic.impactLight();
-    let next = yuanStr;
-    switch (type) {
-      case 'digit':
-        next = sanitizeAmountInput(yuanStr + text);
-        break;
-      case 'dot':
-        // 【修改 P1】分支顺序修正：必须先判空串。旧代码先判 includes('.')，
-        // 空串时 '' 不含 '.' → next = '' + '.' = '.'，parseFloat('.') 为 NaN，金额永远输不出小数
-        if (yuanStr === '') next = '0.';
-        else if (!yuanStr.includes('.')) next = yuanStr + '.';
-        break;
-      case 'back': {
-        next = yuanStr.slice(0, -1);
-        break;
-      }
-      case 'clear':
-        next = '';
-        break;
-    }
-    setYuanStr(next);
-    const fen = next ? yuanToFen(parseFloat(next || '0')) : 0;
-    onChangeFen?.(fen, next);
-  };
-
-  const displayYuan = yuanStr === '' ? '0.00' : yuanStr;
-
-  // 处理是否有末尾小数点 / 只有一位小数的显示
-  const [intPart, decPart] = displayYuan.includes('.')
-    ? displayYuan.split('.')
-    : [displayYuan, ''];
-  const intPartWithComma = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  const decDisplay = decPart
-    ? `.${decPart}${decPart.length === 1 ? '0' : ''}`
-    : yuanStr.includes('.') ? '.' : '.00';
-  const isPlaceholder = yuanStr === '';
+  const [intPart, decPart] = fenToParts(valueFen);
 
   return (
-    <View style={cx(styles.container, containerStyle)}>
-      {/* 金额大显示 */}
-      <View style={styles.display}>
-        <Text style={cx(styles.currency, isPlaceholder && { color: theme.text300 })}>¥</Text>
-        <Text style={cx(styles.amountInt, isPlaceholder && { color: theme.text300 })}>
-          {intPartWithComma}
-        </Text>
-        <Text style={cx(styles.amountDec, isPlaceholder && { color: theme.text300 })}>
-          {decDisplay}
-        </Text>
+    <View style={cx(styles.displayWrap, style)}>
+      {/* 金额大字（左） + 就绪提示（右） */}
+      <View style={styles.displayRow}>
+        <View style={styles.displayAmount}>
+          <Text style={styles.currency}>¥</Text>
+          <Text style={styles.amountInt}>{intPart}</Text>
+          <Text style={styles.amountDec}>.{decPart}</Text>
+        </View>
+        {!!hint && <Text style={cx(styles.hint, { color: theme.danger })}>{hint}</Text>}
       </View>
 
       {/* 快捷金额 Chip 栏 */}
@@ -106,74 +54,138 @@ export default function AmountInput({
             size="sm"
             onPress={async () => {
               await Haptic.impactLight();
-              const fen = yuanToFen(v);
-              setYuanStr(String(v));
-              onChangeFen?.(fen, String(v));
+              onChangeFen?.(yuanToFen(v), String(v));
             }}
           />
         ))}
       </View>
+    </View>
+  );
+}
 
-      {/* 中部插槽：pill 行 / 提示等（配合 flex 布局把键盘压到底部） */}
-      {middle}
+export function AmountKeypad({
+  valueFen = 0,    // 受控值：外部清零（如"保存并继续"）时同步清空输入串
+  onChangeFen,
+  onAdd,
+  onConfirm,
+  showAdd = false,
+  confirmDisabled = false,
+  style,
+}) {
+  const { theme } = useAppTheme();
+  const styles = useStyles();
+  const [yuanStr, setYuanStr] = React.useState('');
 
-      {/* 数字键盘（4x4 grid）；marginTop:auto 在非 flex 父容器下解析为 0，无副作用 */}
-      <View style={styles.keypad}>
-        {KEYPAD_KEYS.map((row, r) => (
-          <View key={r} style={styles.keyrow}>
-            {row.map((k) => {
-              let content;
-              let keyStyle = null;
-              switch (k.type) {
-                case 'digit':
-                  content = <Text style={styles.keyText}>{k.label}</Text>;
-                  break;
-                case 'dot':
-                  content = <Text style={styles.keyText}>.</Text>;
-                  break;
-                case 'back':
-                  content = <Text style={styles.keyIconText}>⌫</Text>;
-                  break;
-                case 'clear':
-                  content = <Text style={cx(styles.keyIconText, { color: theme.danger })}>清空</Text>;
-                  break;
-                case 'add':
-                  content = showAdd ? (
-                    <Text style={cx(styles.keyIconText, { color: theme.primary, fontWeight: '800' })}>+</Text>
-                  ) : null;
-                  break;
-                case 'confirm':
-                  content = (
-                    <View style={cx(styles.confirmBtn, {
-                      backgroundColor: confirmDisabled ? theme.text300 : theme.primary,
-                    })}>
-                      <Text style={styles.confirmText}>✓</Text>
-                      <Text style={styles.confirmSubText}>保存</Text>
-                    </View>
-                  );
-                  keyStyle = styles.confirmKey;
-                  break;
-              }
-              if (k.type === 'add' && !showAdd) return <View key={k.label || r + '-add'} style={{ flex: 1 }} />;
-              return (
-                <TouchableOpacity
-                  key={k.label || r}
-                  activeOpacity={0.6}
-                  style={cx(styles.key, keyStyle)}
-                  onPress={() => {
-                    if (k.type === 'confirm') { if (!confirmDisabled) onConfirm?.(); }
-                    else if (k.type === 'add') onAdd?.();
-                    else press(k.label, k.type);
-                  }}
-                  onPressIn={() => Haptic.impactLight()}
-                >
-                  {content}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ))}
-      </View>
+  // 外部 valueFen 变化（快捷金额点击 / 保存并继续清零）→ 同步内部输入串
+  React.useEffect(() => {
+    const current = yuanToFen(parseFloat(yuanStr || '0'));
+    if (current !== valueFen) {
+      setYuanStr(valueFen ? String(valueFen / 100) : '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valueFen]);
+
+  const press = async (text, type) => {
+    await Haptic.impactLight();
+    let next = yuanStr;
+    switch (type) {
+      case 'digit':
+        next = sanitizeAmountInput(yuanStr + text);
+        break;
+      case 'dot':
+        // 先判空串：'' 不含 '.' 时 next='0.'，否则 parseFloat('.') 为 NaN
+        if (yuanStr === '') next = '0.';
+        else if (!yuanStr.includes('.')) next = yuanStr + '.';
+        break;
+      case 'back':
+        next = yuanStr.slice(0, -1);
+        break;
+      case 'clear':
+        next = '';
+        break;
+    }
+    setYuanStr(next);
+    onChangeFen?.(next ? yuanToFen(parseFloat(next || '0')) : 0, next);
+  };
+
+  return (
+    <View style={cx(styles.keypad, style)}>
+      {KEYPAD_KEYS.map((row, r) => (
+        <View key={r} style={styles.keyrow}>
+          {row.map((k) => {
+            let content;
+            let keyStyle = null;
+            switch (k.type) {
+              case 'digit':
+              case 'dot':
+                content = <Text style={styles.keyText}>{k.type === 'dot' ? '.' : k.label}</Text>;
+                break;
+              case 'back':
+                content = <Text style={styles.keyIconText}>⌫</Text>;
+                break;
+              case 'clear':
+                content = <Text style={cx(styles.keyIconText, { color: theme.danger })}>清空</Text>;
+                break;
+              case 'add':
+                content = showAdd ? (
+                  <Text style={cx(styles.keyIconText, { color: theme.primary, fontWeight: '800' })}>+</Text>
+                ) : null;
+                break;
+              case 'confirm':
+                content = (
+                  <View style={cx(styles.confirmBtn, {
+                    backgroundColor: confirmDisabled ? theme.text300 : theme.primary,
+                  })}>
+                    <Text style={styles.confirmText}>✓ 保存</Text>
+                  </View>
+                );
+                keyStyle = styles.confirmKey;
+                break;
+            }
+            if (k.type === 'add' && !showAdd) return <View key={k.label || r + '-add'} style={{ flex: 1 }} />;
+            return (
+              <TouchableOpacity
+                key={k.label || r}
+                activeOpacity={0.6}
+                style={cx(styles.key, keyStyle)}
+                onPress={() => {
+                  if (k.type === 'confirm') { if (!confirmDisabled) onConfirm?.(); }
+                  else if (k.type === 'add') onAdd?.();
+                  else press(k.label, k.type);
+                }}
+                onPressIn={() => Haptic.impactLight()}
+              >
+                {content}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** 组合版（旧用法兼容）：金额显示 + 快捷金额 + 键盘 竖排 */
+export default function AmountInput({
+  valueFen = 0,
+  onChangeFen,
+  onAdd,
+  onConfirm,
+  showAdd = false,
+  confirmDisabled = false,
+  hint,
+}) {
+  return (
+    <View>
+      <AmountDisplay valueFen={valueFen} hint={hint} onChangeFen={onChangeFen} />
+      <AmountKeypad
+        valueFen={valueFen}
+        onChangeFen={onChangeFen}
+        onAdd={onAdd}
+        onConfirm={onConfirm}
+        showAdd={showAdd}
+        confirmDisabled={confirmDisabled}
+      />
     </View>
   );
 }
@@ -186,49 +198,53 @@ const KEYPAD_KEYS = [
 ];
 
 const useStyles = makeStyles((theme) => ({
-  container: { width: '100%' },
-  display: {
+  // ---- AmountDisplay ----
+  displayWrap: { paddingHorizontal: 16 },
+  displayRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    justifyContent: 'center',
-    paddingVertical: 10,
+    justifyContent: 'space-between',
+    paddingVertical: 6,
   },
-  currency: { fontSize: 28, color: theme.text900, fontWeight: '700', marginRight: 6, marginBottom: 4 },
-  amountInt: { fontSize: 48, color: theme.text900, fontWeight: '800', letterSpacing: 0.5 },
-  amountDec: { fontSize: 28, color: theme.text500, fontWeight: '700', marginBottom: 4 },
+  displayAmount: { flexDirection: 'row', alignItems: 'flex-end' },
+  currency: { fontSize: 24, color: theme.text900, fontWeight: '700', marginRight: 4, marginBottom: 3 },
+  amountInt: { fontSize: 44, color: theme.text900, fontWeight: '800', letterSpacing: 0.5, lineHeight: 50 },
+  amountDec: { fontSize: 24, color: theme.text500, fontWeight: '700', marginBottom: 3 },
+  hint: { fontSize: 12, fontWeight: '600', marginBottom: 8 },
   quickBar: {
     flexDirection: 'row', justifyContent: 'space-around',
-    paddingHorizontal: 12, marginBottom: 10, gap: 8,
+    marginBottom: 8, gap: 8,
   },
-  keypad: { paddingHorizontal: 12, marginTop: 'auto' },
+
+  // ---- AmountKeypad ----
+  keypad: { paddingHorizontal: 10 },
   keyrow: { flexDirection: 'row', justifyContent: 'space-around' },
   key: {
     flex: 1,
-    height: 52,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     margin: 4,
-    borderRadius: 14,
+    borderRadius: 12,
     backgroundColor: theme.bgCard,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3 },
       android: { elevation: 1 },
     }),
   },
-  keyText: { fontSize: 22, color: theme.text900, fontWeight: '600' },
-  keyIconText: { fontSize: 18, color: theme.text700, fontWeight: '600' },
+  keyText: { fontSize: 20, color: theme.text900, fontWeight: '600' },
+  keyIconText: { fontSize: 17, color: theme.text700, fontWeight: '600' },
   confirmKey: {
     padding: 0,
     backgroundColor: 'transparent',
     ...Platform.select({ ios: { shadowOpacity: 0 }, android: { elevation: 0 } }),
   },
   confirmBtn: {
-    width: '100%', height: '100%', borderRadius: 14,
+    width: '100%', height: '100%', borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
     elevation: 4,
   },
-  confirmText: { color: '#fff', fontSize: 20, fontWeight: '800', lineHeight: 24 },
-  confirmSubText: { color: '#fff', fontSize: 10, fontWeight: '600', lineHeight: 12 },
+  confirmText: { color: '#fff', fontSize: 17, fontWeight: '800' },
 }));

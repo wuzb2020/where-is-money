@@ -1,6 +1,6 @@
-// 常用分类宫格（手动记账页顶部快捷选类）
-// 2行×4列：前 7 位 = 最近使用（LRU）+ 默认高频分类补齐，末位「更多」打开全量选择 Sheet
-// 目标：分类选择零弹层——高频场景一击直达，长尾场景仍可走完整选择器
+// 常用分类宫格（手动记账页快捷选类，鲨鱼记账式）
+// 4 列：最近使用（LRU）+ 默认高频分类补齐，末位「更多」打开全量选择 Sheet
+// 注意：格子宽度 25% 时容器严禁再加 gap——4×25%+gap 会溢出换行成 3 列（上版 bug）
 import React from 'react';
 import { View, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -62,7 +62,7 @@ export default function CategoryQuickGrid({
               onPress={onMore}
             >
               <View style={cx(styles.icon, { backgroundColor: theme.primaryBg })}>
-                <MaterialCommunityIcons name="dots-horizontal" size={22} color={theme.primary} />
+                <MaterialCommunityIcons name="dots-horizontal" size={20} color={theme.primary} />
               </View>
               <Text style={cx(styles.name, { color: theme.primary })}>更多</Text>
             </PressableScale>
@@ -81,12 +81,11 @@ export default function CategoryQuickGrid({
               style={cx(
                 styles.icon,
                 { backgroundColor: active ? cat.color : cat.color + '18' },
-                active && styles.iconActive,
               )}
             >
               <MaterialCommunityIcons
                 name={cat.icon || 'circle'}
-                size={22}
+                size={20}
                 color={active ? '#fff' : cat.color}
               />
             </View>
@@ -112,34 +111,25 @@ export default function CategoryQuickGrid({
 }
 
 const useStyles = makeStyles((theme) => ({
+  // 4 列等宽：间距全部内建在 cell 的 padding 里，容器不用 gap（防溢出换列）
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    gap: 4,
+    paddingHorizontal: 8,
   },
   cell: {
     width: '25%',
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 4,
   },
   icon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
-    borderWidth: 2,
-    borderColor: 'transparent',
   },
-  iconActive: {
-    borderColor: 'transparent',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  name: { fontSize: 12, fontWeight: '600', maxWidth: '88%' },
+  name: { fontSize: 12, fontWeight: '600', maxWidth: '100%' },
 }));
