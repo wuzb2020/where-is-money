@@ -15,6 +15,12 @@ import { useThemeStore } from './src/store/useThemeStore';
 import { useCategoryStore } from './src/store/useCategoryStore';
 import { getDB } from './src/core/db';
 import { ensureDirs } from './src/core/utils/storage';
+import FloatingBubbleRecognizeModal from './src/ui/components/FloatingBubbleRecognizeModal';
+import {
+  isFloatingBubbleSupported,
+  subscribeFloatingBubble,
+  consumePendingScreenshot,
+} from './src/utils/floatingBubble';
 
 // 屏蔽一些不影响功能的警告
 LogBox.ignoreLogs([
@@ -30,6 +36,9 @@ SplashScreen.preventAutoHideAsync();
 export default function App() {
   const [ready, setReady] = React.useState(false);
   const [showOnboarding, setShowOnboarding] = React.useState(false);
+  // 悬浮球识别弹窗状态
+  const [fbModalVisible, setFbModalVisible] = React.useState(false);
+  const [fbImageUri, setFbImageUri] = React.useState(null);
 
   // 初始化流程
   React.useEffect(() => {
@@ -61,6 +70,15 @@ export default function App() {
         // 3. 决定是否显示引导页
         setShowOnboarding(!done);
 
+        // 4. 悬浮球冷启动兜底：拉取 App 被杀期间缓存的截图路径
+        if (isFloatingBubbleSupported) {
+          const pending = await consumePendingScreenshot();
+          if (pending) {
+            setFbImageUri(pending);
+            setFbModalVisible(true);
+          }
+        }
+
         setReady(true);
       } catch (e) {
         console.error('[App init] fatal:', e);
@@ -74,6 +92,19 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
+  // 悬浮球截图事件：实时唤起识别弹窗
+  React.useEffect(() => {
+    if (!isFloatingBubbleSupported) return;
+    const unsub = subscribeFloatingBubble(
+      (uri) => {
+        setFbImageUri(uri);
+        setFbModalVisible(true);
+      },
+      (msg) => console.warn('[FloatingBubble]', msg),
+    );
+    return unsub;
+  }, []);
+
   if (!ready) return null;
 
   return (
@@ -84,6 +115,11 @@ export default function App() {
           onOnboardingDone={() => setShowOnboarding(false)}
         />
         <ToastRoot />
+        <FloatingBubbleRecognizeModal
+          visible={fbModalVisible}
+          imageUri={fbImageUri}
+          onClose={() => { setFbModalVisible(false); setFbImageUri(null); }}
+        />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

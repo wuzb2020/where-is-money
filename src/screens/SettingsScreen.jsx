@@ -19,6 +19,15 @@ import { exportBackupJson, exportToExcel, importBackupJson, shareFile } from '..
 import { getMonthlyReport } from '../core/services/AnalyticsService';
 import { dayjs } from '../core/utils/date';
 import * as Haptic from '../core/utils/haptics';
+import {
+  isFloatingBubbleSupported,
+  hasOverlayPermission,
+  openOverlayPermissionSettings,
+  hasNotificationPermission,
+  isBubbleRunning,
+  startBubble,
+  stopBubble,
+} from '../utils/floatingBubble';
 
 /**
  * 设置页：数据管理/分类管理/主题/通知/关于
@@ -33,6 +42,9 @@ export default function SettingsScreen({ navigation }) {
   const [busy, setBusy] = React.useState(''); // '' | 'excel' | 'backup'
   // 统一确认弹窗：null | 'restore' | 'overwrite' | 'clear'
   const [dialog, setDialog] = React.useState(null);
+  // 悬浮球状态
+  const [fbRunning, setFbRunning] = React.useState(false);
+  const [fbBusy, setFbBusy] = React.useState(false);
 
   React.useEffect(() => {
     // 【修改】count 异常捕获，避免 DB 未就绪时未处理 Promise 拒绝
@@ -40,6 +52,10 @@ export default function SettingsScreen({ navigation }) {
       try { setRecordCount(await txStore.count()); }
       catch (e) { console.warn('count failed', e); }
     })();
+    // 刷新悬浮球运行状态
+    if (isFloatingBubbleSupported) {
+      isBubbleRunning().then(setFbRunning).catch(() => {});
+    }
   }, []);
 
   const onExportExcel = async () => {
@@ -104,6 +120,45 @@ export default function SettingsScreen({ navigation }) {
 
   // 上月报告弹窗 { title, message }
   const [report, setReport] = React.useState(null);
+
+  // 悬浮球开关：依次引导悬浮窗权限 → 通知权限 → 启动服务
+  const onToggleFloatingBubble = async (next) => {
+    if (fbBusy) return;
+    setFbBusy(true);
+    try {
+      if (!next) {
+        await stopBubble();
+        setFbRunning(false);
+        Toast.show({ type: 'info', message: '悬浮球已关闭' });
+        return;
+      }
+      // 1. 悬浮窗权限
+      const overlayOk = await hasOverlayPermission();
+      if (!overlayOk) {
+        Toast.show({ type: 'info', message: '请先授予「显示在其他应用上层」权限' });
+        await openOverlayPermissionSettings();
+        return;
+      }
+      // 2. 通知权限（Android 13+，前台服务需要）
+      const notifOk = await hasNotificationPermission();
+      if (!notifOk) {
+        Toast.show({ type: 'info', message: '请授予通知权限以保持悬浮球运行' });
+        return;
+      }
+      // 3. 启动（内部触发 MediaProjection 授权弹窗）
+      const ok = await startBubble();
+      if (ok) {
+        setFbRunning(true);
+        Toast.show({ type: 'success', message: '悬浮球已开启，点击球即可识别当前屏幕账单' });
+      } else {
+        Toast.show({ type: 'info', message: '已取消屏幕录制授权' });
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', message: e?.message || '悬浮球启动失败' });
+    } finally {
+      setFbBusy(false);
+    }
+  };
 
   const monthBtn = async () => {
     // 【修改 P2】月报加载包 try/catch；无记录时 income/expense 可能为 undefined，兜底 0 防止显示 NaN
@@ -219,6 +274,29 @@ export default function SettingsScreen({ navigation }) {
             }
           />
         </Card>
+
+        {/* 悬浮球（仅 Android） */}
+        {isFloatingBubbleSupported && (
+          <>
+            <SectionHeader title="🟢 全局悬浮球" />
+            <Card variant="flat" style={{ marginHorizontal: 16, marginTop: 6 }}>
+              <Item
+                icon="dots-vertical-circle"
+                iconBg={fbRunning ? '#ECFDF5' : '#F3F4F6'}
+                iconColor={fbRunning ? '#059669' : '#6B7280'}
+                title="悬浮球识别账单"
+                sub={fbRunning ? '运行中 · 点击球识别当前屏幕' : '点击悬浮球自动识别屏幕上的账单'}
+                right={
+                  <Switch
+                    value={fbRunning}
+                    disabled={fbBusy}
+                    onValueChange={onToggleFloatingBubble}
+                  />
+                }
+              />
+            </Card>
+          </>
+        )}
 
         {/* OCR 偏好 */}
         <SectionHeader title="🧠 识别偏好" />
