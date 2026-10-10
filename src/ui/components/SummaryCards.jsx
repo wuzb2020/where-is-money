@@ -13,9 +13,8 @@ import { formatAmount } from '../../core/utils/amount';
  * delta: { percent, trend: 'up'|'down'|'flat' }
  */
 export default function SummaryCards({ income, expense, balance, onCardPress }) {
-  const { theme, width } = useAppTheme();
+  const { theme } = useAppTheme();
   const styles = useStyles();
-  const cardWidth = (width - 48) / 3; // 3 张卡，padding 16 + 两张卡间距 8*2 = 48
 
   const cards = [
     {
@@ -45,7 +44,7 @@ export default function SummaryCards({ income, expense, balance, onCardPress }) 
           key={c.key}
           onPress={c.onPress}
           scaleTo={0.95}
-          style={{ width: cardWidth }}
+          style={styles.cardWrap}
         >
           <Animated.View
             entering={FadeInDown.delay(i * 90).springify().damping(18).stiffness(220)}
@@ -98,10 +97,12 @@ export default function SummaryCards({ income, expense, balance, onCardPress }) 
 
 const useStyles = makeStyles((theme) => ({
   row: {
-    flexDirection: 'row', justifyContent: 'space-between',
+    flexDirection: 'row',
     marginHorizontal: 16,
     marginTop: 8,
+    gap: 8,
   },
+  cardWrap: { flex: 1 },
   card: {
     borderRadius: theme.radius.card,
     padding: 14,

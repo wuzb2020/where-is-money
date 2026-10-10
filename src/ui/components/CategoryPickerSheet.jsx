@@ -172,8 +172,8 @@ export default function CategoryPickerSheet({
                 keyExtractor={(c) => String(c.id)}
                 renderItem={renderCat}
                 numColumns={4}
-                columnWrapperStyle={{ gap: 8, marginBottom: 8 }}
-                contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
+                columnWrapperStyle={{ marginBottom: 8 }}
+                contentContainerStyle={{ paddingBottom: 8 }}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                   <View style={{ padding: 40, alignItems: 'center' }}>
@@ -237,17 +237,17 @@ const useStyles = makeStyles((theme) => ({
   recentWrap: { marginBottom: 6 },
   recentRow:  { flexDirection: 'row', flexWrap: 'wrap' },
   catCell: {
-    flex: 1, maxWidth: '23%',
+    flex: 1,
     alignItems: 'center',
     paddingVertical: 12,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: 'transparent',
-    marginHorizontal: '1%',
+    marginHorizontal: 4,
   },
   catIcon: {
     width: 44, height: 44, borderRadius: 22,
     alignItems: 'center', justifyContent: 'center', marginBottom: 6,
   },
-  catName: { fontSize: 12, fontWeight: '600', maxWidth: '90%' },
+  catName: { fontSize: 12, fontWeight: '600', maxWidth: '100%', textAlign: 'center' },
 }));
