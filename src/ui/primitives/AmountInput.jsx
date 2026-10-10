@@ -154,10 +154,15 @@ export function AmountKeypad({
         <TouchableOpacity
           activeOpacity={0.6}
           disabled={saveNextDisabled}
-          style={cx(styles.key, styles.keySpan2, saveNextDisabled && { opacity: 0.4 })}
+          style={cx(styles.key, styles.confirmKey)}
           onPress={async () => { await Haptic.impactLight(); onSaveNext?.(); }}
         >
-          <Text style={cx(styles.saveNextText, { color: theme.primary })}>保存并继续</Text>
+          <View style={cx(styles.confirmBtn, {
+            backgroundColor: confirmDisabled ? theme.text300 : theme.primary,
+          })}>
+            <Text style={cx(styles.confirmText, { color: theme.confirmText })}>保存并继续</Text>
+          </View>
+          
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -256,7 +261,7 @@ const useStyles = makeStyles((theme) => ({
   keySpan2: { height: 48 * 2 + 8, flex: 0 },
   keyText: { fontSize: 20, color: theme.text900, fontWeight: '600' },
   dateKeyText: { fontSize: 11, color: theme.text700, fontWeight: '600', marginTop: 1 },
-  saveNextText: { fontSize: 13, fontWeight: '800', textAlign: 'center', lineHeight: 18 },
+  saveNextText: { fontSize: 17, fontWeight: '800', textAlign: 'center' },
   confirmKey: {
     padding: 0,
     backgroundColor: 'transparent',

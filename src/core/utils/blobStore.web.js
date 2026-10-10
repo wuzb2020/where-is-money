@@ -7,6 +7,12 @@
 // 注意：不能从 './blobStore' 导入——web 平台扩展会把它解析回本文件造成循环依赖
 export const IDB_REF_PREFIX = 'idb://images/';
 
+export function isExternalRef(uri) {
+  return typeof uri === 'string' && uri.startsWith(IDB_REF_PREFIX);
+}
+
+export const isWebImageStore = true;
+
 const DB_NAME = 'qqn_blob_store';
 const DB_VERSION = 1;
 const STORE_IMAGES = 'images';
