@@ -36,9 +36,6 @@ jobs:
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: 生成 Android 原生工程 (expo prebuild)
-        run: npx expo prebuild --platform android --no-install --clean
-
       - name: 赋予 gradlew 执行权限
         run: chmod +x android/gradlew
 

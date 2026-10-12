@@ -7,9 +7,11 @@ dist/
 dist_web/
 web-build/
 
-# Native builds
-/ios
-/android
+# Native builds（只忽略构建产物，保留源代码）
+/android/app/build/
+/android/build/
+/android/.gradle/
+/android/local.properties
 
 # Metro / build cache
 .metro-health-check*
