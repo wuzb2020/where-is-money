@@ -30,7 +30,8 @@ import com.qianqunale.accounting.floating.FloatingBubbleService.Companion.EXTRA_
  *
  * 冷启动双保险：
  *  - Service: 点击悬浮球唤起 MainActivity → onCreate/onNewIntent 走 onMainActivityIntent
- *  - Service: startActivity 失败时直接调 rememberPendingScreenshot 落缓存
+ *  - Service: 直接调 notifyScreenshotStatic 发送 DeviceEventEmitter 事件（不依赖 Activity）
+ *  - Service: startActivity 失败时也调 rememberPendingScreenshot 落缓存
  *  JS 启动后最终都能通过 consumePendingScreenshot() 拿到路径，不会丢失。
  */
 class FloatingBubbleModule(private val reactContext: ReactApplicationContext) :
@@ -48,10 +49,43 @@ class FloatingBubbleModule(private val reactContext: ReactApplicationContext) :
     var pendingScreenshotPath: String? = null
       private set
 
-    /** MainActivity 在 onCreate/onNewIntent 时转发 Intent，把截图路径落缓存。 */
+    /** 保存 ReactContext 供 Service 直接发事件（不依赖 Activity 转发）。 */
+    @Volatile
+    private var appContext: ReactApplicationContext? = null
+
+    /** JS 线程是否在线（在线才敢丢事件，否则必须落 pending 兜底）。 */
+    private fun jsAlive(): Boolean {
+      val ctx = appContext ?: return false
+      return try {
+        ctx.hasActiveReactInstance()
+      } catch (_: Exception) {
+        false
+      }
+    }
+
+    /** 向 JS 投递事件，成功返回 true。 */
+    private fun emitToJs(name: String, params: WritableMap): Boolean {
+      val ctx = appContext ?: return false
+      return try {
+        if (!ctx.hasActiveReactInstance()) return false
+        ctx.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit(name, params)
+        true
+      } catch (_: Exception) {
+        false
+      }
+    }
+
+    /**
+     * MainActivity 在 onCreate/onNewIntent 时转发 Intent。
+     * JS 已在线 → 事件通道会送达，不再落 pending；否则（冷启动/JS 未就绪）落缓存。
+     * 若不区分，每次识别都会留下一条过期路径，导致下次冷启动重复弹出上一次的识别弹窗。
+     */
     @JvmStatic
     fun onMainActivityIntent(intent: Intent?) {
-      rememberPendingScreenshot(intent?.getStringExtra(EXTRA_SCREENSHOT_PATH))
+      val path = intent?.getStringExtra(EXTRA_SCREENSHOT_PATH)
+      if (path.isNullOrEmpty()) return
+      if (jsAlive()) return
+      pendingScreenshotPath = path
     }
 
     /** Service 在无法唤起 Activity 时直接落缓存。 */
@@ -59,11 +93,39 @@ class FloatingBubbleModule(private val reactContext: ReactApplicationContext) :
     fun rememberPendingScreenshot(path: String?) {
       if (!path.isNullOrEmpty()) pendingScreenshotPath = path
     }
+
+    /**
+     * Service 截图成功后直接调用，发送 DeviceEventEmitter 事件给 JS。
+     * 这是最可靠的路径——不依赖 Activity 生命周期，只要 JS 线程存活就能收到。
+     * 送达即清 pending；未送达则保留给冷启动消费，保证不丢失。
+     */
+    @JvmStatic
+    fun notifyScreenshotStatic(path: String) {
+      val delivered = emitToJs(
+        EVENT_SCREENSHOT,
+        Arguments.createMap().apply { putString("uri", path) },
+      )
+      if (delivered) {
+        if (pendingScreenshotPath == path) pendingScreenshotPath = null
+      } else {
+        pendingScreenshotPath = path
+      }
+    }
+
+    /**
+     * Service 侧异常（投影失效 / 初始化失败）直接通知 JS。
+     * 这样用户回到 App 时能看到失败原因，而不是「点了没反应」。
+     */
+    @JvmStatic
+    fun notifyErrorStatic(message: String) {
+      emitToJs(EVENT_ERROR, Arguments.createMap().apply { putString("message", message) })
+    }
   }
 
   private var projectionPromise: Promise? = null
 
   init {
+    appContext = reactContext
     reactContext.addActivityEventListener(this)
   }
 
@@ -71,21 +133,27 @@ class FloatingBubbleModule(private val reactContext: ReactApplicationContext) :
 
   // ---------------------------------------------------------------- 事件发射
 
-  private fun sendEvent(name: String, params: WritableMap?) {
-    try {
-      if (!reactContext.hasActiveReactInstance()) return
-      reactContext
-        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-        .emit(name, params)
-    } catch (_: Exception) {
+  private fun notifyScreenshot(path: String) {
+    val delivered = sendEvent(EVENT_SCREENSHOT, Arguments.createMap().apply {
+      putString("uri", path)
+    })
+    if (delivered) {
+      if (pendingScreenshotPath == path) pendingScreenshotPath = null
+    } else {
+      pendingScreenshotPath = path
     }
   }
 
-  private fun notifyScreenshot(path: String) {
-    pendingScreenshotPath = path
-    sendEvent(EVENT_SCREENSHOT, Arguments.createMap().apply {
-      putString("uri", path)
-    })
+  private fun sendEvent(name: String, params: WritableMap?): Boolean {
+    return try {
+      if (!reactContext.hasActiveReactInstance()) return false
+      reactContext
+        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+        .emit(name, params)
+      true
+    } catch (_: Exception) {
+      false
+    }
   }
 
   // ---------------------------------------------------------------- JS API
@@ -137,7 +205,7 @@ class FloatingBubbleModule(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun startBubble(promise: Promise) {
     if (!Settings.canDrawOverlays(reactContext)) {
-      promise.reject("NO_OVERLAY_PERMISSION", "缺少“显示在其他应用上层”权限")
+      promise.reject("NO_OVERLAY_PERMISSION", "Missing draw-over-other-apps permission")
       return
     }
     if (FloatingBubbleService.isRunning) {
@@ -193,6 +261,11 @@ class FloatingBubbleModule(private val reactContext: ReactApplicationContext) :
 
   override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
     if (requestCode != REQ_MEDIA_PROJECTION) return
+    // Honor/华为 MagicOS 屏蔽 Log.d/Log.i，诊断日志走 Log.w 才能被 logcat 看到
+    android.util.Log.w(
+      "FloatingBubble",
+      "onActivityResult: resultCode=$resultCode(RESULT_OK=-1), hasData=${data != null}",
+    )
     val promise = projectionPromise
     projectionPromise = null
     if (resultCode == Activity.RESULT_OK && data != null) {
@@ -209,7 +282,7 @@ class FloatingBubbleModule(private val reactContext: ReactApplicationContext) :
   }
 
   override fun onNewIntent(intent: Intent?) {
-    // 悬浮球唤起 MainActivity 时（热复用 onCreate 走静态、onNewIntent 走实例）
+    // 兜底：Activity 生命周期触发时也发事件
     val path = intent?.getStringExtra(EXTRA_SCREENSHOT_PATH)
     if (!path.isNullOrEmpty()) {
       notifyScreenshot(path)
@@ -219,5 +292,6 @@ class FloatingBubbleModule(private val reactContext: ReactApplicationContext) :
   override fun invalidate() {
     super.invalidate()
     projectionPromise = null
+    appContext = null
   }
 }

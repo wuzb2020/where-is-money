@@ -328,32 +328,34 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bgPage }} edges={['top']}>
-      {/* 顶部 Header（渐变背景） */}
+      {/* 顶部渐变背景（纯装饰，不接收触摸事件，避免被 ScrollView 覆盖的层级问题） */}
       <LinearGradient colors={primaryGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={cx(styles.headerBg, { paddingTop: insets.top })}
-      >
-        <View style={styles.headerRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={styles.logo}>
-              <MaterialCommunityIcons name="wallet" size={22} color={theme.primary} />
-            </View>
-            <View style={{ marginLeft: 10 }}>
-              <Text style={styles.hello}>
-                {greetingText()} {theme.palette === 'warm' ? '🌤️' : '👋'}
-              </Text>
-              <Text style={styles.subDate}>{dayjs().format('M月D日 dddd')}</Text>
-            </View>
+        pointerEvents="none"
+      />
+
+      {/* 头部按钮层（独立浮在 ScrollView 之上，确保可点击） */}
+      <View style={[styles.headerRow, { position: 'absolute', top: insets.top, left: 0, right: 0, zIndex: 20 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={styles.logo}>
+            <MaterialCommunityIcons name="wallet" size={22} color={theme.primary} />
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <PressableScale onPress={openMonthlyReport} scaleTo={0.88} style={styles.iconBtn} hitSlop={6}>
-              <MaterialCommunityIcons name="chart-pie" size={20} color="#fff" />
-            </PressableScale>
-            <PressableScale onPress={() => navigation.navigate('Settings')} scaleTo={0.88} style={[styles.iconBtn, { marginLeft: 4 }]} hitSlop={6}>
-              <MaterialCommunityIcons name="cog-outline" size={20} color="#fff" />
-            </PressableScale>
+          <View style={{ marginLeft: 10 }}>
+            <Text style={styles.hello}>
+              {greetingText()} {theme.palette === 'warm' ? '🌤️' : '👋'}
+            </Text>
+            <Text style={styles.subDate}>{dayjs().format('M月D日 dddd')}</Text>
           </View>
         </View>
-      </LinearGradient>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <PressableScale onPress={openMonthlyReport} scaleTo={0.88} style={styles.iconBtn} hitSlop={6}>
+            <MaterialCommunityIcons name="chart-pie" size={20} color="#fff" />
+          </PressableScale>
+          <PressableScale onPress={() => navigation.navigate('Settings')} scaleTo={0.88} style={[styles.iconBtn, { marginLeft: 4 }]} hitSlop={6}>
+            <MaterialCommunityIcons name="cog-outline" size={20} color="#fff" />
+          </PressableScale>
+        </View>
+      </View>
 
       <ScrollView
         style={{ flex: 1 }}

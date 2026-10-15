@@ -195,15 +195,14 @@ const useStyles = makeStyles(() => ({
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 6,
+    paddingVertical: 6,
     borderRadius: 8,
   },
-  legendDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-  legendName: { fontSize: 13, flexShrink: 1 },
+  legendDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  legendName: { fontSize: 12, flexShrink: 1 },
   // 比例紧跟分类名（固定 6px 间距），并用分类色与环图扇区呼应
-  legendPct:  { fontSize: 12, fontWeight: '600', marginLeft: 6 },
-  legendSpacer: { flex: 1, minWidth: 8 },
+  legendPct:  { fontSize: 11, fontWeight: '600', marginLeft: 4 },
+  legendSpacer: { flex: 0, width: 6 },
   // 金额右对齐成列，视觉上整齐
-  legendAmt:  { fontSize: 13, fontWeight: '700', marginLeft: 8, textAlign: 'right', minWidth: 44 },
+  legendAmt:  { fontSize: 12, fontWeight: '700', marginLeft: 4, textAlign: 'right' },
 }));

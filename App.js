@@ -4,13 +4,14 @@
 
 import 'react-native-gesture-handler';
 import React from 'react';
-import { LogBox, Alert } from 'react-native';
+import { LogBox, Alert, AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 
 import AppNavigator from './src/navigation/AppNavigator';
 import { ToastRoot } from './src/ui/primitives/Toast';
+import Toast from './src/ui/primitives/Toast';
 import { useThemeStore } from './src/store/useThemeStore';
 import { useCategoryStore } from './src/store/useCategoryStore';
 import { getDB } from './src/core/db';
@@ -100,9 +101,31 @@ export default function App() {
         setFbImageUri(uri);
         setFbModalVisible(true);
       },
-      (msg) => console.warn('[FloatingBubble]', msg),
+      (msg) => {
+        console.warn('[FloatingBubble]', msg);
+        // 原生侧异常（投影失效/初始化失败）直接弹 Toast，避免「点了没反应」的静默失败
+        Toast.show({ type: 'error', message: msg });
+      },
     );
     return unsub;
+  }, []);
+
+  // App 回前台时消费 pending 截图路径（覆盖 Service 截图后 App 还在后台的场景）
+  React.useEffect(() => {
+    if (!isFloatingBubbleSupported) return;
+    const handler = (state) => {
+      if (state === 'active') {
+        consumePendingScreenshot().then((pending) => {
+          if (pending) {
+            console.log('[FloatingBubble] consume pending on resume:', pending);
+            setFbImageUri(pending);
+            setFbModalVisible(true);
+          }
+        });
+      }
+    };
+    const sub = AppState.addEventListener('change', handler);
+    return () => sub.remove();
   }, []);
 
   if (!ready) return null;

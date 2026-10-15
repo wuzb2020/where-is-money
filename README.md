@@ -96,7 +96,112 @@ npx expo prebuild && npx expo run:android    # 或 run:ios
 - **Web 预览**：Tesseract.js（chi_sim 语言包），内置缩放/灰度/二值化预处理与多策略识别。
 - **Expo Go**：无原生 ML Kit 模块，识别会直接抛错，页面展示真实失败原因与重试入口（绝不造假数据）。
 
-### 2. 打包上线（Android APK / iOS IPA）
+### 2. 本地构建 Android APK（含悬浮球等原生功能）
+
+> ⚠️ 悬浮球等手写原生代码已提交到 `android/` 目录，**本地构建才能包含原生功能**。
+> GitHub Actions 的 `expo prebuild --clean` 会抹掉原生代码，故 CI 构建的包不含悬浮球。
+
+#### 前置准备（首次构建必做）
+
+**① 把 Gradle 缓存迁移到 D 盘**（C 盘空间不足时必须，否则 `java.io.IOException: 磁盘空间不足`）
+
+```powershell
+New-Item -ItemType Directory -Force -Path "D:\gradle-home" | Out-Null
+$env:GRADLE_USER_HOME = "D:\gradle-home"
+```
+
+> 每次新开终端构建都要重新设置 `$env:GRADLE_USER_HOME`，或永久设置：
+> 「系统属性 → 环境变量 → 新建用户变量 `GRADLE_USER_HOME` = `D:\gradle-home`」
+
+**② 配置阿里云 Maven 镜像**（已写入 `android/build.gradle`，国内网络下载依赖快 10 倍）
+
+镜像地址已配置在 `android/build.gradle` 的 `buildscript.repositories` 和 `allprojects.repositories` 中：
+```gradle
+maven { url 'https://maven.aliyun.com/repository/google' }
+maven { url 'https://maven.aliyun.com/repository/central' }
+maven { url 'https://maven.aliyun.com/repository/public' }
+```
+
+**③ 网络超时配置**（已写入 `android/gradle.properties`）
+
+```properties
+systemProp.org.gradle.internal.http.connectionTimeout=120000
+systemProp.org.gradle.internal.http.socketTimeout=120000
+```
+
+#### 构建命令
+
+**Debug 包**（含调试符号，体积大 ~210MB，适合开发调试）：
+
+```powershell
+cd d:\ai\qianqunale\android
+$env:GRADLE_USER_HOME = "D:\gradle-home"
+.\gradlew.bat assembleDebug --no-daemon
+```
+
+**Release 包**（strip 调试符号 + PNG 压缩，体积小 ~100MB，和 CI 一致）：
+
+```powershell
+cd d:\ai\qianqunale\android
+$env:GRADLE_USER_HOME = "D:\gradle-home"
+.\gradlew.bat assembleRelease --no-daemon
+```
+
+#### 产物路径
+
+| 构建类型 | 路径 |
+|---|---|
+| Debug | `android\app\build\outputs\apk\debug\app-debug.apk` |
+| Release | `android\app\build\outputs\apk\release\app-release.apk` |
+
+#### 安装到手机
+
+```powershell
+# 覆盖安装（保留本地数据，推荐）
+adb install -r "d:\ai\qianqunale\android\app\build\outputs\apk\debug\app-debug.apk"
+```
+
+> ⚠️ 若报 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`，是签名不一致。**不要卸载**（会清空记账数据），
+> 先在 App 内导出 JSON 备份，再处理。
+
+#### Debug vs Release 体积差异说明
+
+Debug 包比 Release 包大 100MB+ 是正常现象：
+
+| 对比项 | Debug APK | Release APK |
+|---|---|---|
+| 原生库 .so | 保留完整符号表（未 strip） | strip 调试符号，体积缩水 3-5 倍 |
+| JS Bundle | Metro 打包，未压缩 | Hermes 编译为优化字节码 |
+| PNG 资源 | 不压缩 | `crunchPngs=true` 压缩 |
+| 调试代码 | 包含调试断言、DevSupport | 剥离 |
+
+#### 构建常见问题
+
+| 问题 | 解决 |
+|---|---|
+| `Could not read workspace metadata ... metadata.bin` | 删除 `%GRADLE_USER_HOME%\caches\8.8\transforms` 后重试 |
+| `java.io.IOException: 磁盘空间不足` | C 盘至少留 5GB，或设置 `GRADLE_USER_HOME` 到 D 盘 |
+| `Read timed out`（Maven 下载超时） | 确认 `android/build.gradle` 已配置阿里云镜像 |
+| `NDK 25.1 is corrupted` | `gradle.properties` 已指定 `android.ndkVersion=26.1.10909125` |
+| **APK 安装后代码没变化（JS 改动不生效）** | Gradle 把 `bundleReleaseJsAndAssets` 标为 UP-TO-DATE，旧 bundle 没重打。构建时加 `--rerun-tasks` 强制所有任务重跑，或先删除 `android/app/build/intermediates/assets` |
+| **手机安装后提示「已是最新版本」，实际是旧包** | `versionCode` 没变，系统认为是同一版本。每次交付前递增 `android/app/build.gradle` 里的 `versionCode` |
+
+#### 构建后验证（必做！避免装了旧包还以为没修好）
+
+每次构建完成后，**先验证 APK 确实包含了最新代码**，再传到手机安装：
+
+```powershell
+# 1. 确认 APK 时间戳是刚刚生成的
+Get-Item "android\app\build\outputs\apk\release\app-release.apk" | Select-Object LastWriteTime, Length
+
+# 2. 验证 JS bundle 包含了本次新增的关键字（例如此次新增的 flexBasis 样式）
+#    如果返回 0 匹配，说明 bundle 是旧的，必须重新构建
+Select-String -Path "android\app\build\intermediates\assets\release\index.android.bundle" -Pattern "flexBasis" | Measure-Object
+```
+
+只有关键字能在 bundle 里搜到、APK 时间戳是最新的，才说明构建产物正确。
+
+### 3. 云端打包（EAS Build，不含原生悬浮球）
 
 ```bash
 # 用 EAS Build（Expo 官方云端打包，不需要 Mac/Android Studio）
@@ -106,6 +211,9 @@ eas build:configure
 eas build --platform android --profile preview     # Android APK
 eas build --platform ios --profile preview         # iOS IPA（需要 Apple 开发者账号）
 ```
+
+> ⚠️ EAS 云端构建会执行 `expo prebuild`，抹掉 `android/` 目录下的手写原生代码，
+> **不包含悬浮球功能**。需要悬浮球请用本地构建。
 
 ### 3. 替换 App 图标和启动图
 

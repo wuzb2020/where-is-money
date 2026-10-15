@@ -1,7 +1,7 @@
 // 分类宫格（手动记账页，鲨鱼记账式图1）
 // 4 列全量展示当前类型所有分类，最近使用排最前，可随父级 ScrollView 下滑；
 // 末位「更多」打开全量选择/管理 Sheet
-// 注意：格子宽度 25% 时容器严禁再加 gap——4×25%+gap 会溢出换行成 3 列（上版 bug）
+// 注意：格子用 flexBasis:'25%' 替代 width:'25%'，避免 padding 被计入导致窄屏溢出
 import React from 'react';
 import { View, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -54,7 +54,7 @@ export default function CategoryQuickGrid({
               onPress={onMore}
             >
               <View style={cx(styles.icon, { backgroundColor: theme.primaryBg })}>
-                <MaterialCommunityIcons name="dots-horizontal" size={20} color={theme.primary} />
+                <MaterialCommunityIcons name="dots-horizontal" size={18} color={theme.primary} />
               </View>
               <Text style={cx(styles.name, { color: theme.primary })}>更多</Text>
             </PressableScale>
@@ -77,7 +77,7 @@ export default function CategoryQuickGrid({
             >
               <MaterialCommunityIcons
                 name={cat.icon || 'circle'}
-                size={20}
+                size={18}
                 color={active ? '#fff' : cat.color}
               />
             </View>
@@ -99,25 +99,23 @@ export default function CategoryQuickGrid({
 }
 
 const useStyles = makeStyles((theme) => ({
-  // 4 列等宽：间距全部内建在 cell 的 padding 里，容器不用 gap（防溢出换列）
+  // 4 列等宽：用 flexBasis:'25%' 替代 width:'25%'，padding 不计入 basis，不会溢出
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 8,
   },
   cell: {
-    width: '25%',
+    flexBasis: '25%',
     alignItems: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 4,
+    paddingVertical: 6,
   },
   icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 3,
   },
-  name: { fontSize: 12, fontWeight: '600', maxWidth: '100%' },
+  name: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
 }));
